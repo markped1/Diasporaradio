@@ -1,0 +1,8 @@
+{
+  "name": "NDN Radio",
+  "description": "Nigeria Diaspora Network (NDN) Radio - A cross-platform streaming app with AI-powered news and DJ features for the Nigerian diaspora.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}
