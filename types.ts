@@ -65,6 +65,7 @@ declare global {
 export interface MidwayState {
   activeTrackId: string | null;
   activeTrackName: string;
+  activeTrackUrl?: string | null; // Direct stream/file URL for faster sync
   isPlaying: boolean;
   timestamp: number;
   discussion_queue?: string[]; // Up to 10 stories

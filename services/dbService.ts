@@ -60,6 +60,17 @@ class DBService {
     localStorage.setItem(this.STORAGE_KEYS.MIDWAY, JSON.stringify(state));
   }
 
+  async updateMidwayState(partial: Partial<MidwayState>): Promise<void> {
+    this.checkConfig();
+    const current = await this.getMidwayState();
+    const newState: MidwayState = {
+      ...(current || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+      ...partial,
+      timestamp: Date.now()
+    };
+    await this.setMidwayState(newState);
+  }
+
   private async getDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);

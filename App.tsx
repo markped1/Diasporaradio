@@ -10,7 +10,7 @@ import { scanNigerianNewspapers } from './services/newsAIService';
 import { checkApiKey } from './services/geminiService';
 import { getDetailedBulletinAudio, getNewsAudio, getJingleAudio, getDiscussionAudio } from './services/aiDjService';
 import { UserRole, MediaFile, AdminMessage, AdminLog, NewsItem, ListenerReport, MidwayState } from './types';
-import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2, DEFAULT_STREAM_URL } from './constants';
+import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2, DEFAULT_STREAM_URL, CHANNEL_INTRO } from './constants';
 
 const App: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.LISTENER);
@@ -260,10 +260,18 @@ const App: React.FC = () => {
 
       // 2. Sync Track Info
       if (remoteState.activeTrackId !== activeTrackIdRef.current || remoteState.activeTrackName !== currentTrackName) {
-        // First check local list
+        // High-Priority: Use Direct URL if provided by Admin (No lookup delay)
+        if (remoteState.activeTrackUrl) {
+          setActiveTrackId(remoteState.activeTrackId);
+          setActiveTrackUrl(remoteState.activeTrackUrl);
+          setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
+          return;
+        }
+
+        // Fallback 1: Check local list
         let track = playlistRef.current.find(t => t.id === remoteState.activeTrackId);
 
-        // If not found, check shared_media in the remote state itself (Immediate Sync)
+        // Fallback 2: Check shared_media in the remote state itself
         if (!track && remoteState.shared_media) {
           track = remoteState.shared_media.find(t => t.id === remoteState.activeTrackId);
         }
@@ -277,7 +285,6 @@ const App: React.FC = () => {
           setActiveTrackUrl(DEFAULT_STREAM_URL || null);
           setCurrentTrackName('Live Stream');
         } else if (remoteState.activeTrackName) {
-          // Fallback: Use the name from remote state if we don't have the track anywhere
           setActiveTrackId(remoteState.activeTrackId);
           setActiveTrackUrl(DEFAULT_STREAM_URL || null);
           setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
@@ -591,6 +598,25 @@ const App: React.FC = () => {
           }}
         />
 
+        {/* RELOCATED NEWS TICKER (UNDER PROGRESSION TAB) */}
+        <div className="bg-white/80 backdrop-blur-sm text-green-950 py-2.5 overflow-hidden relative shadow-sm border-b border-green-50 z-30">
+          <div className="flex whitespace-nowrap animate-marquee">
+            {[...news, ...news, ...news, ...news].map((item, idx) => (
+              <span key={idx} className="mx-12 text-[9px] font-black uppercase tracking-[0.12em] flex items-center">
+                <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+                <span className="text-green-600 mr-2">[{item.category}]</span>
+                {item.title}
+              </span>
+            ))}
+            {news.length === 0 && (
+              <span className="mx-12 text-[9px] font-black uppercase tracking-[0.12em] flex items-center">
+                <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+                {CHANNEL_INTRO}
+              </span>
+            )}
+          </div>
+        </div>
+
         {role === UserRole.LISTENER ? (
           <ListenerView
             news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
@@ -609,11 +635,11 @@ const App: React.FC = () => {
               setIsRadioPlaying(true);
               setHasInteracted(true);
 
-              await dbService.setMidwayState({
+              await dbService.updateMidwayState({
                 activeTrackId: t.id,
                 activeTrackName: cleanTrackName(t.name),
-                isPlaying: true,
-                timestamp: Date.now()
+                activeTrackUrl: t.url, // Pass direct URL to listeners
+                isPlaying: true
               });
             }}
             isRadioPlaying={isRadioPlaying}
@@ -624,11 +650,8 @@ const App: React.FC = () => {
               setHasInteracted(true);
 
               const current = await dbService.getMidwayState();
-              await dbService.setMidwayState({
-                activeTrackId: current?.activeTrackId || null,
-                activeTrackName: current?.activeTrackName || 'Live Stream',
+              await dbService.updateMidwayState({
                 isPlaying: newState,
-                timestamp: Date.now(),
                 broadcastPulse: Date.now(), // Pulse on toggle
                 lastEvent: { type: newState ? 'PLAY' : 'STOP', timestamp: Date.now() }
               });
@@ -643,7 +666,24 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {/* GLOBAL FOOTER */}
+      <footer className="mt-4 pt-4 border-t border-green-100 text-center space-y-1 pb-6">
+        <div className="flex items-center justify-center space-x-4 mb-3">
+          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center"><i className="fab fa-facebook-f text-[10px] text-green-950"></i></div>
+          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center"><i className="fab fa-twitter text-[10px] text-green-950"></i></div>
+          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center"><i className="fab fa-whatsapp text-[10px] text-green-950"></i></div>
+        </div>
+        <p className="text-[7.5px] font-black uppercase tracking-[0.2em] text-green-950">{APP_NAME}</p>
+        <p className="text-[6.5px] text-green-950/50 uppercase tracking-[0.4em]">Designed by {DESIGNER_NAME} &bull; v2.5.0</p>
+      </footer>
+
       {showAuth && <PasswordModal onClose={() => setShowAuth(false)} onSuccess={() => { setRole(UserRole.ADMIN); setShowAuth(false); }} />}
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .animate-marquee { display: inline-flex; animation: marquee 50s linear infinite; }
+      `}} />
     </div>
   );
 };

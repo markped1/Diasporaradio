@@ -216,50 +216,6 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         </div>
       </section>
 
-      {/* 7. NEWS TICKER (BOTTOM PLACEMENT) */}
-      <div className="mt-4 bg-white/80 backdrop-blur-sm text-green-950 py-3 overflow-hidden relative shadow-inner border-y border-green-100 mx-[-6px] z-30">
-        <div className="flex whitespace-nowrap animate-marquee">
-          {/* Multiply items to ensure enough width for smooth scrolling */}
-          {[...news, ...news, ...news, ...news].map((item, idx) => (
-            <span key={idx} className="mx-12 text-[10px] font-black uppercase tracking-[0.15em] flex items-center">
-              <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
-              <span className="text-green-600 mr-2">[{item.category}]</span>
-              {item.title}
-            </span>
-          ))}
-          {news.length === 0 && (
-            <>
-              <span className="mx-12 text-[10px] font-black uppercase tracking-[0.15em] flex items-center">
-                <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
-                {CHANNEL_INTRO}
-              </span>
-              <span className="mx-12 text-[10px] font-black uppercase tracking-[0.15em] flex items-center">
-                <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
-                {CHANNEL_INTRO}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Footer (Text color dark green, size +15%) */}
-      <footer className="mt-8 pt-6 border-t border-green-100 text-center space-y-1 pb-6">
-        <div className="flex items-center justify-center space-x-4 mb-4">
-          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-facebook-f text-[12px] text-green-950"></i></div>
-          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-twitter text-[12px] text-green-950"></i></div>
-          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-whatsapp text-[12px] text-green-950"></i></div>
-        </div>
-        <p className="text-[8.5px] font-black uppercase tracking-[0.2em] text-green-950">{APP_NAME}</p>
-        <p className="text-[7.5px] text-green-950/50 uppercase tracking-[0.4em]">Designed by {DESIGNER_NAME} &bull; v2.4.0</p>
-      </footer>
-
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .animate-marquee { display: inline-flex; animation: marquee 50s linear infinite; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}} />
     </div>
   );
 };
