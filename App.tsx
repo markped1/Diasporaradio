@@ -265,6 +265,11 @@ const App: React.FC = () => {
           setCurrentTrackName('Live Stream');
         }
       }
+
+      // 3. Sync News
+      if (remoteState.latest_news && remoteState.latest_news.length > 0) {
+        setNews(remoteState.latest_news);
+      }
     };
 
     // Initial fetch to get the current state
@@ -513,6 +518,7 @@ const App: React.FC = () => {
           onTrackEnded={handlePlayNext}
           onPeakReached={handlePeakReached}
           isDucking={isDucking}
+          onInteract={() => setHasInteracted(true)}
         />
 
         {role === UserRole.LISTENER ? (

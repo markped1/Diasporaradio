@@ -101,10 +101,20 @@ class DBService {
 
   async getNews(): Promise<NewsItem[]> {
     const data = localStorage.getItem(this.STORAGE_KEYS.NEWS);
-    const news: NewsItem[] = data ? JSON.parse(data) : [];
-    // Strict 48-hour filter (Current News Only)
+    const localNews: NewsItem[] = data ? JSON.parse(data) : [];
+
+    // Fallback/Merge logic: If we have a MidwayState, use its news
+    try {
+      const state = await this.getMidwayState();
+      if (state?.latest_news && state.latest_news.length > 0) {
+        return state.latest_news;
+      }
+    } catch (e) {
+      console.warn("Could not sync remote news:", e);
+    }
+
     const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
-    return news.filter(n => n.timestamp > fortyEightHoursAgo);
+    return localNews.filter(n => n.timestamp > fortyEightHoursAgo);
   }
 
   async cleanupOldNews(): Promise<void> {
@@ -119,6 +129,19 @@ class DBService {
     const freshOnly = news.filter(n => n.timestamp > fortyEightHoursAgo);
     localStorage.setItem(this.STORAGE_KEYS.NEWS, JSON.stringify(freshOnly));
     localStorage.setItem(this.STORAGE_KEYS.LAST_SYNC, Date.now().toString());
+
+    // Sync to Supabase so listeners see it
+    try {
+      if (supabase) {
+        const state = await this.getMidwayState();
+        await this.setMidwayState({
+          ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+          latest_news: freshOnly
+        });
+      }
+    } catch (e) {
+      console.error("Supabase news sync failed:", e);
+    }
   }
 
   async getLastSyncTime(): Promise<number> {

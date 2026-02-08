@@ -34,22 +34,26 @@ async function generatePuterAudio(text: string, options: any = {}): Promise<Uint
   }
 
   try {
-    // If no voice is specified, we'll let Puter use its default (usually female)
-    // but we allow passing specific voice/provider settings.
-    const audio = await window.puter.ai.txt2speech(text, options);
-    console.log("Puter TTS response received:", audio, "with options:", options);
+    // Puter's txt2speech can take a string for voice OR an options object for advanced providers.
+    // If we pass an object that Puter doesn't like, it might fail.
+    // We'll try the provided options first, then fallback to a simple call.
+    let audio;
+    try {
+      audio = await window.puter.ai.txt2speech(text, options);
+    } catch (e) {
+      console.warn("Puter TTS with options failed, trying simple call...", e);
+      audio = await window.puter.ai.txt2speech(text);
+    }
+
     if (audio && audio.src) {
-      console.log("Fetching audio from URL:", audio.src);
       const response = await fetch(audio.src);
       if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
       const arrayBuffer = await response.arrayBuffer();
-      console.log("Audio data fetched successfully, size:", arrayBuffer.byteLength);
       return new Uint8Array(arrayBuffer);
     }
-    console.warn("Puter TTS returned audio without src:", audio);
     return null;
   } catch (error) {
-    console.error("Puter TTS generation failed details:", error);
+    console.error("Puter TTS generation failed", error);
     return null;
   }
 }

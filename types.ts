@@ -68,4 +68,5 @@ export interface MidwayState {
   isPlaying: boolean;
   timestamp: number;
   discussion_queue?: string[]; // Up to 10 stories
+  latest_news?: NewsItem[]; // Shared news items
 }

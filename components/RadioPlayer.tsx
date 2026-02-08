@@ -12,6 +12,7 @@ interface RadioPlayerProps {
   onPeakReached?: () => void;
   isAdmin?: boolean;
   isDucking?: boolean;
+  onInteract?: () => void;
 }
 
 const RadioPlayer: React.FC<RadioPlayerProps> = ({
@@ -21,7 +22,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   forcePlaying = false,
   onTrackEnded,
   onPeakReached,
-  isDucking = false
+  isDucking = false,
+  onInteract
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1.0);
@@ -310,6 +312,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         }
 
         await audioRef.current.play();
+        onInteract?.();
         clearTimeout(timeoutId);
       } catch (err: any) {
         clearTimeout(timeoutId);
