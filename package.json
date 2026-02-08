@@ -14,6 +14,7 @@
     "@capacitor/core": "^8.0.2",
     "@google/genai": "^1.38.0",
     "@supabase/supabase-js": "^2.95.3",
+    "firebase": "^12.9.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },

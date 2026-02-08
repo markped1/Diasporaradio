@@ -5,6 +5,7 @@ import AdminView from './components/AdminView';
 import PasswordModal from './components/PasswordModal';
 import RadioPlayer from './components/RadioPlayer';
 import { dbService } from './services/dbService';
+import { app as firebaseApp } from './services/firebaseConfig'; // Initialize Firebase
 import { scanNigerianNewspapers } from './services/newsAIService';
 import { getDetailedBulletinAudio, getNewsAudio, getJingleAudio, getDiscussionAudio } from './services/aiDjService';
 import { UserRole, MediaFile, AdminMessage, AdminLog, NewsItem, ListenerReport, MidwayState } from './types';
