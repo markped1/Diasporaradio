@@ -54,7 +54,6 @@ const AdminView: React.FC<AdminViewProps> = ({
   const [discussionText, setDiscussionText] = useState('');
   const [discussionQueue, setDiscussionQueue] = useState<string[]>([]);
   const [nextSyncIn, setNextSyncIn] = useState<string>('');
-  const [midway, setMidway] = useState<MidwayState | null>(null);
   const [apiHealth, setApiHealth] = useState<'IDLE' | 'CHECKING' | 'HEALTHY' | 'ERROR'>('IDLE');
   const [cloudMode, setCloudMode] = useState(true); // Default to global broadcast
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -63,15 +62,13 @@ const AdminView: React.FC<AdminViewProps> = ({
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = async () => {
-    const [m, r, mid, dq] = await Promise.all([
+    const [m, r, dq] = await Promise.all([
       dbService.getMedia(),
       dbService.getReports(),
-      dbService.getMidwayState(),
       dbService.getDiscussionQueue()
     ]);
     setMediaList(m || []);
     setReports(r || []);
-    setMidway(mid);
     setDiscussionQueue(dq || []);
 
     // Check API Health once on load
@@ -276,27 +273,6 @@ const AdminView: React.FC<AdminViewProps> = ({
         </div>
       </div>
 
-      <div className="mx-1 px-4 py-3 bg-purple-600 text-white rounded-2xl shadow-xl border border-purple-400 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
-          <i className="fas fa-random text-3xl"></i>
-        </div>
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-              <h3 className="text-[9px] font-black uppercase tracking-[0.2em]">Midway Relay</h3>
-            </div>
-            <p className="text-[10px] font-bold truncate max-w-[200px]">
-              {midway ? midway.activeTrackName : 'Idle - No Relay'}
-            </p>
-          </div>
-          <div className="text-right">
-            <span className="text-[7px] font-black uppercase bg-white/20 px-2 py-0.5 rounded-full">
-              {midway?.isPlaying ? 'On Air' : 'Standby'}
-            </span>
-          </div>
-        </div>
-      </div>
 
       {statusMsg && (
         <div className="mx-1 space-y-1">
