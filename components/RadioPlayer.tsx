@@ -14,6 +14,7 @@ interface RadioPlayerProps {
   isDucking?: boolean;
   duckingType?: 'news' | 'jingle' | null;
   onInteract?: () => void;
+  uiMode?: 'full' | 'headless' | 'listener';
 }
 
 const RadioPlayer: React.FC<RadioPlayerProps> = ({
@@ -25,7 +26,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   onPeakReached,
   isDucking = false,
   duckingType = null,
-  onInteract
+  onInteract,
+  uiMode = 'full'
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1.0);
@@ -384,6 +386,135 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     const secs = Math.floor(time % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  if (uiMode === 'headless') return null;
+
+  // 🎧 LISTENER CONSOLE UI (IMMERSIVE MODE)
+  if (uiMode === 'listener') {
+    return (
+      <div className="w-full flex flex-col items-center space-y-6 animate-scale-in pb-4">
+        {/* TOP STATION HEADER */}
+        <div className="flex flex-col items-center space-y-1 mb-2">
+          <div className="flex items-center space-x-3">
+            <div className={`w-3 h-3 rounded-full ${isPlaying ? 'bg-red-500 animate-ping shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-gray-700'}`}></div>
+            <h2 className={`text-sm font-black uppercase tracking-[0.4em] ${isPlaying ? 'text-red-500' : 'text-gray-500'}`}>
+              {isPlaying ? 'ON-AIR STUDIO' : 'STATION STANDBY'}
+            </h2>
+          </div>
+          <span className="text-[7px] font-black text-green-900/40 uppercase tracking-widest">Digital Satellite Relay Hub</span>
+        </div>
+
+        {/* PROPER RADIO CHASSIS */}
+        <div className="w-full bg-[#050505] rounded-[2.5rem] border-[4px] border-green-900/30 p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden ring-1 ring-white/10">
+          {/* Signal Grid Background */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#008751 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+
+          <div className="relative z-10 space-y-8">
+            {/* Frequency & Signal Display */}
+            <div className="flex justify-between items-end border-b border-green-500/10 pb-6">
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black text-green-500/50 uppercase mb-2">Frequency Indicator</span>
+                <div className="flex items-baseline space-x-1">
+                  <span className="text-4xl font-black text-green-400 font-mono tracking-tighter">98.50</span>
+                  <span className="text-lg font-black text-green-600 font-mono">MHz</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[8px] font-black text-green-500/50 uppercase mb-2">Signal Strength</span>
+                <div className="flex items-end space-x-1 h-8">
+                  {[0.4, 0.6, 0.8, 0.5, 0.9, 0.7].map((h, i) => (
+                    <div
+                      key={i}
+                      className={`w-1.5 rounded-t-sm transition-all duration-500 ${isPlaying ? 'bg-green-400' : 'bg-green-900/30'}`}
+                      style={{ height: isPlaying ? `${h * 100}%` : '20%', opacity: 0.3 + (h * 0.7) }}
+                    ></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Main Visualizer & Info Area */}
+            <div className="h-40 bg-black/40 rounded-3xl border border-white/5 relative flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+              {isPlaying && <div className="absolute inset-0 bg-green-500/5 blur-3xl rounded-full"></div>}
+
+              <div className="relative z-20 space-y-4 w-full">
+                <div className="flex flex-col space-y-1">
+                  <span className="text-[7px] font-black text-green-500/40 uppercase tracking-[0.3em]">Currently Receiving</span>
+                  <h3 className="text-sm font-black text-white/90 uppercase tracking-widest line-clamp-2 min-h-[1.5rem] leading-tight px-4">
+                    {activeTrackUrl ? currentTrackName : 'SCANNING FOR BROADCAST...'}
+                  </h3>
+                </div>
+
+                <div className="flex items-center justify-center space-x-4">
+                  <span className="text-[9px] font-mono text-green-400">{formatTime(currentTime)}</span>
+                  <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" style={{ width: `${progress}%` }}></div>
+                  </div>
+                  <span className="text-[9px] font-mono text-green-500/50">{formatTime(duration)}</span>
+                </div>
+              </div>
+
+              {/* Integrated Visualizer */}
+              <div className="absolute inset-0 z-10 pointer-events-none opacity-40">
+                <Logo size="lg" isPlaying={isPlaying} analyser={analyser} className="opacity-20 scale-150 rotate-12" />
+              </div>
+            </div>
+
+            {/* Master Play / Control Section */}
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center space-x-6">
+                <button
+                  onClick={handlePlayPause}
+                  className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all border-[6px] ${isPlaying
+                      ? 'bg-red-600 border-red-500/20 text-white shadow-[0_0_30px_rgba(220,38,38,0.4)]'
+                      : 'bg-green-600 border-green-500/20 text-white shadow-[0_0_30px_rgba(22,163,74,0.3)] hover:bg-green-500'
+                    }`}
+                >
+                  {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-2xl"></i> :
+                    isPlaying ? <i className="fas fa-pause text-3xl"></i> : <i className="fas fa-play text-3xl ml-1"></i>}
+                </button>
+
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-3">
+                    <i className="fas fa-volume-high text-green-500/50 text-[10px]"></i>
+                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Receiver Gain: {Math.round(volume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range" min="0" max="1" step="0.01" value={volume}
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    className="w-40 h-1.5 bg-white/5 rounded-full appearance-none accent-green-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Engine Status Badge */}
+              <div className="text-right flex flex-col items-end opacity-40">
+                <span className="text-[6px] font-black text-white uppercase tracking-tighter">Receiver Protocol v4.0</span>
+                <span className="text-[7px] font-mono text-green-500 uppercase mt-1">Status: {status}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Interaction Prompt (if not playing yet) */}
+        {!isPlaying && forcePlaying && (
+          <div className="px-6 py-3 bg-red-600/10 border border-red-500/30 rounded-2xl animate-bounce">
+            <p className="text-[8px] font-black text-red-500 uppercase tracking-widest flex items-center">
+              <i className="fas fa-satellite-dish mr-2"></i> Tap the Play Console to Tune in
+            </p>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="bg-red-950/50 border border-red-500/50 p-4 rounded-2xl w-full">
+            <p className="text-[8px] font-black text-red-400 text-center uppercase leading-tight">{errorMessage}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (uiMode === 'headless') return null;
 
   return (
     <div className="flex flex-col items-center justify-center space-y-2 w-full">

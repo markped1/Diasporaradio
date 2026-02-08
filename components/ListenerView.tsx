@@ -114,41 +114,38 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       </div>
 
 
-      {/* 3. SPONSORED HIGHLIGHTS */}
+      {/* 2. COMMUNITY DESK (Journalist HQ) */}
       <section className="space-y-1">
-        <h3 className="text-[7px] font-black uppercase text-green-600/40 tracking-[0.2em] px-1">Sponsored Highlights</h3>
-        <div className="min-h-[180px] relative">
-          {currentAd ? (
-            <div className="rounded-2xl overflow-hidden border border-green-100 h-[180px] shadow-md animate-scale-in">
-              {currentAd.type === 'image' ? (
-                <img src={currentAd.url} className="w-full h-full object-cover" alt="ad" />
-              ) : (
-                <SponsoredVideo video={currentAd} onEnded={nextAd} />
-              )}
-            </div>
-          ) : (
-            <div className="bg-green-50/20 h-[150px] rounded-2xl border border-dashed border-green-100 flex flex-col items-center justify-center opacity-40">
-              <i className="fas fa-signal mb-2 text-green-600"></i>
-              <span className="text-[6px] font-black uppercase tracking-widest">Awaiting Sponsor Signal</span>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 4. GOOGLE ADS */}
-      <section className="space-y-1">
-        <div className="flex justify-between items-center px-1">
-          <h3 className="text-[7px] font-black uppercase text-gray-400 tracking-[0.2em]">Google Ads</h3>
-          <div className="flex items-center text-gray-300 text-[6px] space-x-1">
-            <i className="fas fa-info-circle"></i>
-            <span>AdChoices</span>
+        <div className="p-3 rounded-2xl border border-dashed border-green-200 bg-white/60 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-all duration-700">
+            <i className="fas fa-microphone-alt text-4xl"></i>
           </div>
-        </div>
-        <div className="bg-gray-50 border border-gray-100 rounded-lg p-6 h-[135px] flex flex-col items-center justify-center text-center space-y-3 overflow-hidden relative group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-red-400 to-yellow-400"></div>
-          <span className="text-[12px] font-black text-gray-800 uppercase tracking-wide">Premium African Fashion</span>
-          <span className="text-[9px] text-gray-500 font-medium leading-relaxed max-w-[80%]">Global shipping starting at $15. Shop the latest authentic styles direct from Lagos!</span>
-          <button className="bg-blue-600 text-white text-[8px] px-5 py-2 rounded-full font-black uppercase shadow-sm mt-1 hover:bg-blue-700 transition-colors">Shop Now</button>
+
+          {!isReporting ? (
+            <button
+              onClick={() => setIsReporting(true)}
+              className="w-full py-2.5 text-[7px] font-black text-[#008751] uppercase tracking-widest flex items-center justify-center bg-white rounded-xl border border-green-50 shadow-sm active:scale-95 transition-all"
+            >
+              <i className="fas fa-microphone-alt mr-2 text-red-500"></i> Contribute to the Diaspora Feed
+            </button>
+          ) : (
+            <form onSubmit={handleReport} className="space-y-2 animate-scale-in relative z-10">
+              <textarea
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+                placeholder="Briefly describe what's happening near you..."
+                className="w-full bg-green-50 border border-green-100 rounded-xl p-3 text-[9px] h-20 outline-none focus:border-green-400 font-medium resize-none shadow-inner"
+              />
+              <div className="flex space-x-2">
+                <button type="submit" className="flex-1 bg-[#008751] text-white py-2.5 rounded-xl font-black text-[7px] uppercase tracking-widest shadow-md active:scale-95 transition-all">
+                  Broadcast Report
+                </button>
+                <button type="button" onClick={() => setIsReporting(false)} className="px-5 bg-white text-green-700 py-2.5 rounded-xl text-[7px] font-black border border-green-100 active:scale-95 transition-all">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </section>
 
@@ -184,37 +181,6 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         </div>
       </section>
 
-      {/* 6. JOURNALIST HQ */}
-      <section className="space-y-1">
-        <h3 className="text-[7px] font-black uppercase text-green-600/40 tracking-[0.2em] px-1">Journalist HQ</h3>
-        <div className="p-3 rounded-2xl border border-dashed border-green-200 bg-white/60 shadow-sm">
-          {!isReporting ? (
-            <button
-              onClick={() => setIsReporting(true)}
-              className="w-full py-2.5 text-[7px] font-black text-[#008751] uppercase tracking-widest flex items-center justify-center bg-white rounded-xl border border-green-50 shadow-sm active:scale-95 transition-all"
-            >
-              <i className="fas fa-microphone-alt mr-2 text-red-500"></i> Report Happenings in your City
-            </button>
-          ) : (
-            <form onSubmit={handleReport} className="space-y-2 animate-scale-in">
-              <textarea
-                value={reportText}
-                onChange={(e) => setReportText(e.target.value)}
-                placeholder="Briefly describe what's happening near you..."
-                className="w-full bg-green-50 border border-green-100 rounded-xl p-3 text-[9px] h-20 outline-none focus:border-green-400 font-medium resize-none shadow-inner"
-              />
-              <div className="flex space-x-2">
-                <button type="submit" className="flex-1 bg-[#008751] text-white py-2.5 rounded-xl font-black text-[7px] uppercase tracking-widest shadow-md active:scale-95 transition-all">
-                  Broadcast Report
-                </button>
-                <button type="button" onClick={() => setIsReporting(false)} className="px-5 bg-white text-green-700 py-2.5 rounded-xl text-[7px] font-black border border-green-100 active:scale-95 transition-all">
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </section>
 
     </div>
   );

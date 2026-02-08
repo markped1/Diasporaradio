@@ -591,6 +591,7 @@ const App: React.FC = () => {
           onPeakReached={handlePeakReached}
           isDucking={isDucking}
           duckingType={duckingType}
+          uiMode={role === UserRole.LISTENER ? 'listener' : 'full'}
           onInteract={() => {
             setHasInteracted(true);
             // CATCH-UP LOGIC: Force a full sync update from the cloud immediately
