@@ -573,13 +573,38 @@ const AdminView: React.FC<AdminViewProps> = ({
 
       {
         activeTab === 'logs' && (
-          <div className="bg-white rounded-xl border border-green-50 p-2 max-h-[300px] overflow-y-auto font-mono text-[7px]">
-            {logs.map(log => (
-              <div key={log.id} className="border-b border-green-50 py-1 flex justify-between">
-                <span className="text-green-700">{log.action}</span>
-                <span className="text-gray-400 shrink-0 ml-2">{new Date(log.timestamp).toLocaleTimeString()}</span>
+          <div className="space-y-3">
+            <div className="bg-red-50 p-4 rounded-3xl border border-red-100 flex items-center justify-between shadow-sm">
+              <div>
+                <h4 className="text-[9px] font-black text-red-900 uppercase tracking-widest flex items-center">
+                  <i className="fas fa-heartbeat mr-1"></i> Audio Engine Recovery
+                </h4>
+                <p className="text-[7px] text-red-700 font-bold leading-tight mt-1">If music is silent, use this to jumpstart the signal.</p>
               </div>
-            ))}
+              <button
+                onClick={async () => {
+                  setStatusMsg('Repairing Audio Sequence...');
+                  onRefreshData();
+                  setTimeout(() => setStatusMsg('Signal Re-established.'), 2000);
+                }}
+                className="bg-red-600 text-white px-4 py-3 rounded-2xl text-[8px] font-black uppercase shadow-lg active:scale-95 transition-all"
+              >
+                Repair Audio
+              </button>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-indigo-100 p-4 max-h-[300px] overflow-y-auto font-mono text-[7px] shadow-sm">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-[8px] font-black uppercase text-indigo-600 tracking-widest">Active Station Logs</h3>
+                <span className="text-[6px] font-black uppercase text-gray-400">Security & Relay</span>
+              </div>
+              {logs.map(log => (
+                <div key={log.id} className="border-b border-indigo-50/50 py-2 flex justify-between last:border-0 hover:bg-indigo-50/20 transition-colors">
+                  <span className="text-indigo-900 font-bold">{log.action}</span>
+                  <span className="text-gray-400 shrink-0 ml-2">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )
       }

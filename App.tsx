@@ -164,7 +164,7 @@ const App: React.FC = () => {
         resolve();
       }
     });
-  }, [hasInteracted]);
+  }, [hasInteracted, role]);
 
   const runScheduledBroadcast = useCallback(async (isBrief: boolean) => {
     if (isSyncingRef.current) return;
@@ -389,10 +389,13 @@ const App: React.FC = () => {
       setIsRadioPlaying(true);
       setHasInteracted(true);
 
+      const isLocalBlob = track.url.startsWith('blob:') || track.url.startsWith('data:');
+
       // RELAY TO MIDWAY for everyone else
       await dbService.setMidwayState({
         activeTrackId: track.id,
         activeTrackName: cleanTrackName(track.name),
+        activeTrackUrl: isLocalBlob ? null : track.url,
         isPlaying: true,
         timestamp: Date.now()
       });
@@ -411,10 +414,13 @@ const App: React.FC = () => {
     setCurrentTrackName(cleanTrackName(track.name));
     setIsRadioPlaying(true);
 
+    const isLocalBlob = track.url.startsWith('blob:') || track.url.startsWith('data:');
+
     // RELAY TO MIDWAY
     await dbService.setMidwayState({
       activeTrackId: track.id,
       activeTrackName: cleanTrackName(track.name),
+      activeTrackUrl: isLocalBlob ? null : track.url,
       isPlaying: true,
       timestamp: Date.now()
     });
@@ -571,7 +577,13 @@ const App: React.FC = () => {
           <p className="text-[6px] text-green-950/60 font-black uppercase mt-0.5 tracking-widest">Designed by {DESIGNER_NAME}</p>
         </div>
         <div className="flex items-center space-x-2">
-          {isDucking && <span className="text-[7px] font-black uppercase text-red-500 animate-pulse bg-red-50 px-1 rounded shadow-sm border border-red-100">Live Broadcast</span>}
+          {isDucking && <span className="text-[7px] font-black uppercase text-red-500 animate-pulse bg-red-50 px-1 rounded shadow-sm border border-red-100">Ducking Active</span>}
+          {role === UserRole.ADMIN && (
+            <div className={`px-1.5 py-0.5 rounded-full border text-[6px] font-black uppercase ${isRadioPlaying ? 'bg-green-500/10 border-green-500/50 text-green-700' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+              <i className="fas fa-signal mr-1"></i>
+              {isRadioPlaying ? 'Signal Live' : 'Signal Off'}
+            </div>
+          )}
           <button
             onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
             className="px-2 py-0.5 rounded-full border border-green-950 text-[7px] font-black uppercase text-green-950 hover:bg-green-50 transition-colors"
@@ -651,12 +663,14 @@ const App: React.FC = () => {
               setIsRadioPlaying(true);
               setHasInteracted(true);
 
+              const isLocalBlob = t.url.startsWith('blob:') || t.url.startsWith('data:');
+
               await dbService.updateMidwayState({
                 activeTrackId: t.id,
                 activeTrackName: cleanTrackName(t.name),
-                activeTrackUrl: t.url, // Pass direct URL to listeners
+                activeTrackUrl: isLocalBlob ? null : t.url, // Only sync true cloud URLs
                 isPlaying: true,
-                broadcastPulse: Date.now() // FORCE SYNC ON TRACK CHANGE
+                broadcastPulse: Date.now()
               });
             }}
             isRadioPlaying={isRadioPlaying}
@@ -666,10 +680,9 @@ const App: React.FC = () => {
               setIsRadioPlaying(newState);
               setHasInteracted(true);
 
-              const current = await dbService.getMidwayState();
               await dbService.updateMidwayState({
                 isPlaying: newState,
-                broadcastPulse: Date.now(), // Pulse on toggle
+                broadcastPulse: Date.now(),
                 lastEvent: { type: newState ? 'PLAY' : 'STOP', timestamp: Date.now() }
               });
             }}

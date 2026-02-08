@@ -228,10 +228,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         audioRef.current.load();
 
         if (isPlaying || forcePlaying) {
-          // Only init audio context for local files
-          if (!isStreamRef.current) {
-            initAudioContext();
-          }
+          // ALWAYS attempt to init audio context to unblock browser audio and enable gain/analyzer
+          initAudioContext();
 
           audioRef.current.play().catch(err => {
             console.warn("Autoplay blocked or stream error:", err);
@@ -248,17 +246,16 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         if (!activeTrackUrl) {
           console.warn("Force playing requested but no URL - Resetting to IDLE");
           setStatus('IDLE');
+          setIsPlaying(false); // Ensure state is synced
           return;
         }
-        // Only init audio context for local files
-        if (!isStreamRef.current) {
-          initAudioContext();
-        }
+        // ALWAYS attempt to init audio context to unblock browser audio and enable gain/analyzer
+        initAudioContext();
 
         audioRef.current.play().catch((err) => {
-          console.error("Play failed:", err);
+          console.error("Audio Engine Play Failure:", err.message, err);
           setStatus('ERROR');
-          setErrorMessage('Failed to play - Try clicking play again');
+          setErrorMessage(`Playback Blocked: ${err.message || 'Check Browser Permissions'}`);
         });
       } else if (!forcePlaying && !audioRef.current.paused) {
         audioRef.current.pause();
@@ -297,26 +294,23 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
           audioRef.current.play().catch(console.warn);
         }
       } else {
-        // BROADCAST/NEWS: FULL STOP/PAUSE for clarity
-        if (isStreamRef.current) {
-          if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
-            gainNodeRef.current.gain.setTargetAtTime(0, audioContextRef.current.currentTime, 0.1);
-          } else {
-            audioRef.current.volume = 0;
-          }
+        // BROADCAST/NEWS: MUTE for clarity (Don't pause, so we don't trigger 'pause' events and clear state)
+        if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
+          gainNodeRef.current.gain.setTargetAtTime(0, audioContextRef.current.currentTime, 0.1);
         } else {
-          audioRef.current.pause();
+          audioRef.current.volume = 0;
         }
       }
     } else {
       // RESUME / RESTORE VOLUME
+      const targetVolume = volumeRef.current;
       if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        gainNodeRef.current.gain.setTargetAtTime(volumeRef.current, audioContextRef.current.currentTime, 0.5);
+        gainNodeRef.current.gain.setTargetAtTime(targetVolume, audioContextRef.current.currentTime, 0.5);
       } else {
-        audioRef.current.volume = volumeRef.current;
+        audioRef.current.volume = targetVolume;
       }
 
-      // If it was a paused local track that should be playing, resume it
+      // If it's a paused local track that should be playing, resume it
       if (!isStreamRef.current && isPlaying && audioRef.current.paused) {
         audioRef.current.play().catch(err => console.warn("Auto-resume failed:", err));
       }
@@ -466,8 +460,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
                 <button
                   onClick={handlePlayPause}
                   className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all border-[6px] ${isPlaying
-                      ? 'bg-red-600 border-red-500/20 text-white shadow-[0_0_30px_rgba(220,38,38,0.4)]'
-                      : 'bg-green-600 border-green-500/20 text-white shadow-[0_0_30px_rgba(22,163,74,0.3)] hover:bg-green-500'
+                    ? 'bg-red-600 border-red-500/20 text-white shadow-[0_0_30px_rgba(220,38,38,0.4)]'
+                    : 'bg-green-600 border-green-500/20 text-white shadow-[0_0_30px_rgba(22,163,74,0.3)] hover:bg-green-500'
                     }`}
                 >
                   {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-2xl"></i> :
