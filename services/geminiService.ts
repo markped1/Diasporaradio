@@ -33,7 +33,7 @@ export async function generateText(prompt: string, systemInstruction: string) {
   return withRetry(async () => {
     const ai = getAIClient();
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-latest', // UPDATED: Specific version alias
+      model: 'gemini-2.0-flash', // UPDATED: 2.0-flash available for this key
       contents: prompt,
       config: {
         systemInstruction,
@@ -49,7 +49,7 @@ export async function checkApiKey() {
   try {
     const ai = getAIClient();
     const result = await ai.models.generateContent({
-      model: "gemini-1.5-flash-latest",
+      model: "gemini-2.0-flash",
       contents: [{ role: 'user', parts: [{ text: "Hello. Just checking if you are online." }] }]
     });
     console.log("✅ API Health Check Success:", result.text);
