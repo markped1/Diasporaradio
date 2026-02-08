@@ -37,6 +37,7 @@ const App: React.FC = () => {
   const isSyncingRef = useRef(false);
   const pendingAudioRef = useRef<Uint8Array | null>(null);
   const lastBroadcastMarkerRef = useRef<string>("");
+  const lastBroadcastIdRef = useRef<string>("");
 
   const mediaUrlCache = useRef<Map<string, string>>(new Map());
   const playlistRef = useRef<MediaFile[]>([]);
@@ -281,6 +282,23 @@ const App: React.FC = () => {
       if (remoteState.latest_news && remoteState.latest_news.length > 0) {
         setNews(remoteState.latest_news);
       }
+
+      // 4. Sync REAL-TIME Broadcasts (Manual Admin Speech)
+      if (remoteState.activeBroadcast && remoteState.activeBroadcast.id !== lastBroadcastIdRef.current) {
+        lastBroadcastIdRef.current = remoteState.activeBroadcast.id;
+        const b = remoteState.activeBroadcast;
+        console.log(`Incoming Broadcast Sync: ${b.type} - ${b.id}`);
+
+        if (b.type === 'news') {
+          getNewsAudio(b.text).then(audio => {
+            if (audio) playRawPcm(audio, 'news');
+          });
+        } else if (b.type === 'discussion') {
+          getDiscussionAudio(b.text).then(audio => {
+            if (audio) playRawPcm(audio, 'news');
+          });
+        }
+      }
     };
 
     // Initial fetch to get the current state
@@ -370,6 +388,9 @@ const App: React.FC = () => {
 
   const handlePushBroadcast = async (voiceText: string) => {
     if (voiceText.trim()) {
+      // Trigger sync for everyone else first
+      await dbService.triggerBroadcastSync(voiceText, 'news');
+
       const intro = await getJingleAudio(JINGLE_1);
       if (intro) await playRawPcm(intro, 'jingle');
 
@@ -387,6 +408,9 @@ const App: React.FC = () => {
 
     console.log("Starting Admin Discussion Broadcast:", text);
     try {
+      // Trigger sync for everyone else first
+      await dbService.triggerBroadcastSync(text, 'discussion');
+
       // Add jingles to "warm up" the context and match the successful scheduled pattern
       const intro = await getJingleAudio(JINGLE_1);
       if (intro) await playRawPcm(intro, 'jingle');

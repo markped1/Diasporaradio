@@ -160,6 +160,37 @@ class DBService {
     return data ? JSON.parse(data) : [];
   }
 
+  async uploadMedia(file: File): Promise<string | null> {
+    if (!supabase) return null;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `music/${fileName}`;
+
+    try {
+      // Attempt to upload to 'media' bucket
+      const { data, error } = await supabase.storage
+        .from('media')
+        .upload(filePath, file);
+
+      if (error) {
+        if (error.message.includes('bucket not found')) {
+          throw new Error("Supabase Storage bucket 'media' not found. Please create a PUBLIC bucket named 'media' in your Supabase dashboard.");
+        }
+        throw error;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('media')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (e: any) {
+      console.error("Supabase Storage Upload failed:", e);
+      throw e;
+    }
+  }
+
   async addMedia(file: MediaFile): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
@@ -309,6 +340,21 @@ class DBService {
       console.warn("Queue remove failed:", e);
     }
     localStorage.setItem(this.STORAGE_KEYS.DISCUSSION_QUEUE, JSON.stringify(updated));
+  }
+
+  async triggerBroadcastSync(text: string, type: 'news' | 'jingle' | 'discussion'): Promise<void> {
+    this.checkConfig();
+    const state = await this.getMidwayState();
+    const updatedState: MidwayState = {
+      ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+      activeBroadcast: {
+        id: Math.random().toString(36).substr(2, 9),
+        text,
+        type,
+        timestamp: Date.now()
+      }
+    };
+    await this.setMidwayState(updatedState);
   }
 }
 

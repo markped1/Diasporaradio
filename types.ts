@@ -69,4 +69,10 @@ export interface MidwayState {
   timestamp: number;
   discussion_queue?: string[]; // Up to 10 stories
   latest_news?: NewsItem[]; // Shared news items
+  activeBroadcast?: {
+    id: string;
+    text: string;
+    type: 'news' | 'jingle' | 'discussion';
+    timestamp: number;
+  };
 }

@@ -102,6 +102,8 @@ const AdminView: React.FC<AdminViewProps> = ({
     setIsProcessing(true);
     let count = 0;
     try {
+      const isCloud = window.confirm("Do you want to upload these files to the CLOUD for global listeners? \n\n(Requires a public 'media' bucket in Supabase. Cancel to keep them local-only.)");
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.name.startsWith('.') || file.name.includes('DS_Store')) continue;
@@ -113,12 +115,23 @@ const AdminView: React.FC<AdminViewProps> = ({
         let finalType: 'audio' | 'video' | 'image' = isAudio ? 'audio' : (isVideo ? 'video' : 'image');
         if (!isAudio && !isVideo && !isImage) continue;
 
-        setStatusMsg(`Importing: ${count + 1}...`);
+        setStatusMsg(`Processing: ${count + 1}...`);
+
+        let cloudUrl = '';
+        if (isCloud) {
+          try {
+            cloudUrl = await dbService.uploadMedia(file) || '';
+          } catch (err: any) {
+            alert(err.message);
+            break;
+          }
+        }
+
         await dbService.addMedia({
-          id: 'local-' + Math.random().toString(36).substr(2, 9),
+          id: 'media-' + Math.random().toString(36).substr(2, 9),
           name: file.name,
-          url: '',
-          file: file,
+          url: cloudUrl,
+          file: cloudUrl ? undefined : file, // Don't store local file if we have cloud URL
           type: finalType,
           timestamp: Date.now(),
           likes: 0
@@ -184,8 +197,8 @@ const AdminView: React.FC<AdminViewProps> = ({
           </div>
           <div className="flex flex-col space-y-2 mt-1">
             <div className={`px-2 py-1 rounded text-[6px] font-black border flex items-center space-x-1 ${apiHealth === 'HEALTHY' ? 'bg-green-500/20 border-green-500/50 text-green-200' :
-                apiHealth === 'ERROR' ? 'bg-red-500/20 border-red-500/50 text-red-100' :
-                  'bg-white/10 border-white/20 text-white/50'
+              apiHealth === 'ERROR' ? 'bg-red-500/20 border-red-500/50 text-red-100' :
+                'bg-white/10 border-white/20 text-white/50'
               }`}>
               <i className={`fas fa-brain text-[7px] ${apiHealth === 'CHECKING' ? 'animate-spin' : ''}`}></i>
               <span className="uppercase">API: {apiHealth}</span>
@@ -427,7 +440,20 @@ const AdminView: React.FC<AdminViewProps> = ({
                 <div key={item.id} className="bg-white p-3 rounded-xl border border-green-50 flex items-center justify-between shadow-sm animate-scale-in">
                   <div className="flex items-center space-x-3 truncate pr-4">
                     <i className={`fas ${item.type === 'audio' ? 'fa-music' : 'fa-film'} text-xs text-green-600`}></i>
-                    <p className="text-[9px] font-bold text-green-950 truncate">{item.name}</p>
+                    <div className="flex flex-col truncate">
+                      <p className="text-[9px] font-bold text-green-950 truncate">{item.name}</p>
+                      <div className="flex items-center space-x-1">
+                        {item.url ? (
+                          <span className="text-[6px] font-black uppercase text-blue-500 flex items-center">
+                            <i className="fas fa-cloud mr-1"></i> Cloud Synced
+                          </span>
+                        ) : (
+                          <span className="text-[6px] font-black uppercase text-amber-500 flex items-center">
+                            <i className="fas fa-microchip mr-1"></i> Local Only
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex space-x-1">
                     <button onClick={() => onPlayTrack(item)} className="w-7 h-7 bg-green-50 text-green-600 rounded-full flex items-center justify-center"><i className="fas fa-play text-[8px]"></i></button>
