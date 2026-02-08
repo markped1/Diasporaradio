@@ -310,20 +310,27 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      setStatus('LOADING');
+      // NUCLEAR RESET: Clear previous errors and force a fresh load
       setErrorMessage('');
+      setStatus('LOADING');
 
-      // Watchdog: If loading takes > 5s, reset status to avoid stuck spinner
+      const targetSrc = activeTrackUrl || DEFAULT_STREAM_URL;
+
+      // Force refresh the source to break any "stuck" state
+      audioRef.current.src = "";
+      audioRef.current.load();
+      audioRef.current.src = targetSrc;
+
+      // Watchdog: Even shorter 4s reset
       const timeoutId = setTimeout(() => {
         if (statusRef.current === 'LOADING') {
-          console.warn("Playback watchdog triggered: Stream loading took too long.");
+          console.warn("Watchdog: Loading took too long. Resetting.");
           setStatus('IDLE');
-          setErrorMessage('Slow connection. Try clicking Play again or resetting.');
+          setErrorMessage('Connection slow. Try Reconnecting or Refreshing.');
         }
-      }, 5000);
+      }, 4000);
 
       try {
-        // Essential for mobile/PWA: Init context on user interaction
         if (!isStreamRef.current) {
           initAudioContext();
         } else if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
@@ -337,7 +344,12 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         clearTimeout(timeoutId);
         console.error("Play error:", err);
         setStatus('ERROR');
-        setErrorMessage(err.message || 'Failed to play stream');
+        // Vercel/Auth detection
+        if (err.message?.includes('401') || err.message?.includes('authentication')) {
+          setErrorMessage('Vercel Authentication is blocking player. Disable it in Vercel Settings.');
+        } else {
+          setErrorMessage('Tap to Play again');
+        }
       }
     }
   };
@@ -382,11 +394,11 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
         <button
           onClick={handlePlayPause}
-          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all bg-white text-[#008751] border-4 border-[#008751]/10`}
-          disabled={status === 'LOADING'}
+          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all bg-white text-[#008751] border-4 border-[#008751]/10`}
+        // REMOVED DISABLED: User can always interrupt a stuck load
         >
           {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-xl"></i> :
-            status === 'ERROR' ? <i className="fas fa-exclamation-triangle text-red-500"></i> :
+            status === 'ERROR' ? <i className="fas fa-redo-alt text-red-500"></i> :
               isPlaying ? <i className="fas fa-pause text-2xl"></i> : <i className="fas fa-play text-2xl ml-1"></i>}
         </button>
 
