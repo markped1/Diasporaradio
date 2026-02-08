@@ -56,6 +56,7 @@ const AdminView: React.FC<AdminViewProps> = ({
   const [midway, setMidway] = useState<MidwayState | null>(null);
   const [apiHealth, setApiHealth] = useState<'IDLE' | 'CHECKING' | 'HEALTHY' | 'ERROR'>('IDLE');
   const [cloudMode, setCloudMode] = useState(true); // Default to global broadcast
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -101,49 +102,65 @@ const AdminView: React.FC<AdminViewProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setIsProcessing(true);
-    let count = 0;
-    try {
-      const isCloud = cloudMode; // Use the toggle state instead of window.confirm
+    let successCount = 0;
+    let failCount = 0;
+    const total = files.length;
 
-      for (let i = 0; i < files.length; i++) {
+    try {
+      const isCloud = cloudMode;
+
+      for (let i = 0; i < total; i++) {
         const file = files[i];
         if (file.name.startsWith('.') || file.name.includes('DS_Store')) continue;
+
+        setUploadProgress(Math.round(((i + 1) / total) * 100));
+
         const ext = file.name.split('.').pop()?.toLowerCase() || '';
         const mime = file.type.toLowerCase();
         const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(ext) || mime.startsWith('audio/');
         const isVideo = ['mp4', 'webm', 'mov'].includes(ext) || mime.startsWith('video/');
         const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) || mime.startsWith('image/');
-        let finalType: 'audio' | 'video' | 'image' = isAudio ? 'audio' : (isVideo ? 'video' : 'image');
+
+        const finalType: 'audio' | 'video' | 'image' = isAudio ? 'audio' : (isVideo ? 'video' : 'image');
         if (!isAudio && !isVideo && !isImage) continue;
 
-        setStatusMsg(`Processing: ${count + 1}...`);
+        setStatusMsg(`Importing: ${i + 1}/${total} - ${file.name.slice(0, 20)}...`);
 
-        let cloudUrl = '';
-        if (isCloud) {
-          try {
+        try {
+          let cloudUrl = '';
+          if (isCloud) {
             cloudUrl = await dbService.uploadMedia(file) || '';
-          } catch (err: any) {
-            alert(err.message);
-            break;
           }
-        }
 
-        await dbService.addMedia({
-          id: 'media-' + Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          url: cloudUrl,
-          file: cloudUrl ? undefined : file, // Don't store local file if we have cloud URL
-          type: finalType,
-          timestamp: Date.now(),
-          likes: 0
-        });
-        count++;
+          await dbService.addMedia({
+            id: 'media-' + Math.random().toString(36).substr(2, 9),
+            name: file.name,
+            url: cloudUrl,
+            file: cloudUrl ? undefined : file,
+            type: finalType,
+            timestamp: Date.now(),
+            likes: 0
+          });
+          successCount++;
+        } catch (err: any) {
+          console.error(`Upload failed for ${file.name}:`, err);
+          failCount++;
+          // If it's a critical auth/storage error, we might want to stop
+          if (err.message?.includes('bucket') || err.message?.includes('auth')) break;
+        }
       }
-      setStatusMsg(`Success: ${count} items added.`);
+
+      setStatusMsg(failCount === 0 ? `Success: ${successCount} items added.` : `Mixed Results: ${successCount} added, ${failCount} failed.`);
       onRefreshData();
       await loadData();
-    } catch (error) { setStatusMsg('Import Error.'); }
-    finally { setIsProcessing(false); setTimeout(() => setStatusMsg(''), 5000); if (e.target) e.target.value = ''; }
+    } catch (error) {
+      setStatusMsg('Import Error.');
+    } finally {
+      setIsProcessing(false);
+      setUploadProgress(0);
+      setTimeout(() => setStatusMsg(''), 5000);
+      if (e.target) e.target.value = '';
+    }
   };
 
   const handleManualBroadcast = async (item: NewsItem) => {
@@ -271,7 +288,21 @@ const AdminView: React.FC<AdminViewProps> = ({
         </div>
       </div>
 
-      {statusMsg && <div className="mx-1 p-2 text-[8px] font-black uppercase text-center rounded-lg bg-green-600 text-white border border-green-700 animate-pulse shadow-sm">{statusMsg}</div>}
+      {statusMsg && (
+        <div className="mx-1 space-y-1">
+          <div className="p-2 text-[8px] font-black uppercase text-center rounded-lg bg-green-600 text-white border border-green-700 animate-pulse shadow-sm">
+            {statusMsg}
+          </div>
+          {isProcessing && uploadProgress > 0 && (
+            <div className="h-1.5 bg-green-100 rounded-full overflow-hidden border border-green-200">
+              <div
+                className="h-full bg-green-500 transition-all duration-500 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+          )}
+        </div>
+      )}
 
       {
         activeTab === 'command' && (

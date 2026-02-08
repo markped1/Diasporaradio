@@ -213,21 +213,24 @@ class DBService {
       request.onerror = () => reject(request.error);
     });
 
-    // If it's a cloud file (URL exists and No binary file), sync to Global Registry
+    // If it's a cloud file (URL exists and No binary file), sync to Global Persistent Library
     if (file.url && !file.file && supabase) {
       try {
-        const state = await this.getMidwayState();
-        const currentLibrary = state?.shared_media || [];
-        // Prevent duplicates
-        if (!currentLibrary.find(m => m.id === file.id)) {
-          await this.setMidwayState({
-            ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
-            shared_media: [file, ...currentLibrary].slice(0, 100), // Keep last 100 shared tracks
-            broadcastPulse: Date.now() // Trigger sync for listeners
+        await supabase
+          .from('media_library')
+          .upsert({
+            id: file.id,
+            name: file.name,
+            url: file.url,
+            type: file.type,
+            timestamp: file.timestamp,
+            likes: file.likes || 0
           });
-        }
+
+        // Also trigger a pulse to notify listeners of library update
+        await this.sendPulse('SYNC');
       } catch (e) {
-        console.error("Global Library sync failed:", e);
+        console.error("Global Library persistence failed:", e);
       }
     }
   }
@@ -242,18 +245,25 @@ class DBService {
       request.onerror = () => reject(request.error);
     });
 
-    // Merge with Shared Global Library
+    // Merge with Persistent Global Media Library
     try {
-      const state = await this.getMidwayState();
-      if (state?.shared_media) {
-        // Use a map to handle duplicates, global files overwrite local placeholders
-        const mediaMap = new Map<string, MediaFile>();
-        localFiles.forEach(f => mediaMap.set(f.id, f));
-        state.shared_media.forEach(f => mediaMap.set(f.id, f));
-        return Array.from(mediaMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('media_library')
+          .select('*')
+          .order('timestamp', { ascending: false });
+
+        if (!error && data) {
+          const mediaMap = new Map<string, MediaFile>();
+          // Local files act as placeholders if cloud sync fails or for truly local files
+          localFiles.forEach(f => mediaMap.set(f.id, f));
+          // Cloud files overwrite/supplement local records
+          data.forEach(f => mediaMap.set(f.id, f as MediaFile));
+          return Array.from(mediaMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+        }
       }
     } catch (e) {
-      console.warn("Could not fetch global library:", e);
+      console.warn("Could not fetch global persistent library:", e);
     }
 
     return localFiles.sort((a, b) => b.timestamp - a.timestamp);
@@ -269,18 +279,11 @@ class DBService {
       request.onerror = () => reject(request.error);
     });
 
-    // Remove from Global Registry if exists
+    // Remove from Global Persistent Registry
     try {
-      const state = await this.getMidwayState();
-      if (state?.shared_media) {
-        const updatedLibrary = state.shared_media.filter(m => m.id !== id);
-        if (updatedLibrary.length !== state.shared_media.length) {
-          await this.setMidwayState({
-            ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
-            shared_media: updatedLibrary,
-            broadcastPulse: Date.now()
-          });
-        }
+      if (supabase) {
+        await supabase.from('media_library').delete().eq('id', id);
+        await this.sendPulse('SYNC');
       }
     } catch (e) {
       console.warn("Global Library remove failed:", e);
