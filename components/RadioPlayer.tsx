@@ -316,7 +316,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
       const targetSrc = activeTrackUrl;
       if (!targetSrc) {
         setStatus('IDLE');
-        setErrorMessage('Awaiting Admin Broadcast...');
+        setErrorMessage(forcePlaying ? 'Live Syncing... Tap again in 5s' : 'Awaiting Admin Broadcast...');
         return;
       }
 
@@ -385,7 +385,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         {/* Track Info Display */}
         <div className="bg-[#008751]/10 px-4 py-2 rounded-full border border-green-200/50 w-full overflow-hidden shadow-inner flex items-center justify-center text-center">
           <span className="text-[7px] font-black uppercase text-green-800 tracking-widest line-clamp-1">
-            {activeTrackUrl ? `NOW PLAYING: ${currentTrackName}` : 'AWAITING ADMIN BROADCAST...'}
+            {(activeTrackUrl || forcePlaying) ? `NOW PLAYING: ${currentTrackName}` : 'AWAITING ADMIN BROADCAST...'}
           </span>
         </div>
 

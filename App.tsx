@@ -10,7 +10,7 @@ import { scanNigerianNewspapers } from './services/newsAIService';
 import { checkApiKey } from './services/geminiService';
 import { getDetailedBulletinAudio, getNewsAudio, getJingleAudio, getDiscussionAudio } from './services/aiDjService';
 import { UserRole, MediaFile, AdminMessage, AdminLog, NewsItem, ListenerReport, MidwayState } from './types';
-import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2 } from './constants';
+import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2, DEFAULT_STREAM_URL } from './constants';
 
 const App: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.LISTENER);
@@ -252,14 +252,13 @@ const App: React.FC = () => {
       console.log("Midway Sync (App Sync):", remoteState);
 
       // 1. Sync Playback State (On-Air status)
-      // DECOUPLED: We only sync isPlaying if the user is an ADMIN.
-      // For listeners, we let them control their own Play button to avoid "stuck" states.
-      if (role === UserRole.ADMIN && remoteState.isPlaying !== isRadioPlayingRef.current) {
+      // SYNCED: We sync isPlaying for everyone to ensure listeners join the broadcast automatically.
+      if (remoteState.isPlaying !== isRadioPlayingRef.current) {
         setIsRadioPlaying(remoteState.isPlaying);
       }
 
       // 2. Sync Track Info
-      if (remoteState.activeTrackId !== activeTrackIdRef.current) {
+      if (remoteState.activeTrackId !== activeTrackIdRef.current || remoteState.activeTrackName !== currentTrackName) {
         const track = playlistRef.current.find(t => t.id === remoteState.activeTrackId);
         if (track) {
           setActiveTrackId(track.id);
@@ -267,10 +266,13 @@ const App: React.FC = () => {
           setCurrentTrackName(cleanTrackName(track.name));
         } else if (remoteState.activeTrackId === null) {
           setActiveTrackId(null);
-          setActiveTrackUrl(null);
+          setActiveTrackUrl(DEFAULT_STREAM_URL || null);
           setCurrentTrackName('Live Stream');
         } else if (remoteState.activeTrackName) {
           // Fallback: Use the name from remote state if we don't have the track in local list
+          // Also fallback to the default stream URL since we can't access the admin's local file
+          setActiveTrackId(remoteState.activeTrackId);
+          setActiveTrackUrl(DEFAULT_STREAM_URL || null);
           setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
         }
       }
