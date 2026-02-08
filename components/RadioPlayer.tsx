@@ -185,21 +185,20 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('loadstart', handleLoadStart);
 
-    const targetSrc = activeTrackUrl || DEFAULT_STREAM_URL;
-    isStreamRef.current = !targetSrc.startsWith('blob:') && !targetSrc.startsWith('data:');
+    const targetSrc = activeTrackUrl;
+    if (targetSrc) {
+      isStreamRef.current = !targetSrc.startsWith('blob:') && !targetSrc.startsWith('data:');
 
-    // CRITICAL FIX: Don't set crossOrigin for live streams
-    // Many streaming services don't send proper CORS headers
-    if (targetSrc.startsWith('blob:') || targetSrc.startsWith('data:')) {
-      audio.crossOrigin = null;
-    } else {
-      // For online streams, don't set crossOrigin unless needed
-      // This allows the stream to play without CORS restrictions
-      audio.removeAttribute('crossorigin');
+      // CRITICAL FIX: Don't set crossOrigin for live streams
+      if (targetSrc.startsWith('blob:') || targetSrc.startsWith('data:')) {
+        audio.crossOrigin = null;
+      } else {
+        audio.removeAttribute('crossorigin');
+      }
+
+      audio.src = targetSrc;
+      audio.preload = 'none';
     }
-
-    audio.src = targetSrc;
-    audio.preload = 'none'; // Don't preload streams
 
     return () => {
       audio.pause();
@@ -211,8 +210,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
   useEffect(() => {
     if (audioRef.current) {
-      const targetSrc = activeTrackUrl || DEFAULT_STREAM_URL;
-      if (audioRef.current.src !== targetSrc) {
+      const targetSrc = activeTrackUrl;
+      if (targetSrc && audioRef.current.src !== targetSrc) {
         const isLocal = targetSrc.startsWith('blob:') || targetSrc.startsWith('data:');
         isStreamRef.current = !isLocal;
 
@@ -314,7 +313,12 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
       setErrorMessage('');
       setStatus('LOADING');
 
-      const targetSrc = activeTrackUrl || DEFAULT_STREAM_URL;
+      const targetSrc = activeTrackUrl;
+      if (!targetSrc) {
+        setStatus('IDLE');
+        setErrorMessage('Awaiting Admin Broadcast...');
+        return;
+      }
 
       // Force refresh the source to break any "stuck" state
       audioRef.current.src = "";
@@ -381,7 +385,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         {/* Track Info Display */}
         <div className="bg-[#008751]/10 px-4 py-2 rounded-full border border-green-200/50 w-full overflow-hidden shadow-inner flex items-center justify-center text-center">
           <span className="text-[7px] font-black uppercase text-green-800 tracking-widest line-clamp-1">
-            NOW PLAYING: {currentTrackName}
+            {activeTrackUrl ? `NOW PLAYING: ${currentTrackName}` : 'AWAITING ADMIN BROADCAST...'}
           </span>
         </div>
 

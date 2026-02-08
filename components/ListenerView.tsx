@@ -113,65 +113,9 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         <div className="absolute top-0 right-0 w-16 h-16 bg-green-50/50 rounded-full -mr-8 -mt-8"></div>
       </div>
 
-      {/* 2. NEWS TICKER */}
-      <section className="bg-[#008751]/5 rounded-xl border border-[#008751]/10 shadow-inner h-8 flex items-center overflow-hidden">
-        <div className="flex whitespace-nowrap animate-marquee items-center">
-          <span className="text-[8px] font-black text-[#008751] uppercase px-8 tracking-widest inline-block">{CHANNEL_INTRO}</span>
-          {adminMessages.map((msg, i) => (
-            <span key={`admin-${i}`} className="text-[8px] text-red-600 font-black uppercase px-8 flex items-center inline-block">
-              <i className="fas fa-bullhorn mr-2 animate-bounce"></i> {msg.text}
-              <span className="ml-8 text-green-300">|</span>
-            </span>
-          ))}
-          {news.map((n, i) => (
-            <span key={`ticker-${i}`} className="text-[8px] text-green-800 font-bold uppercase px-8 flex items-center inline-block">
-              <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2 shrink-0 animate-pulse"></span>
-              <span className="text-[#008751] font-black mr-2">BREAKING:</span>
-              {n.title}
-              <span className="ml-8 text-green-300">|</span>
-            </span>
-          ))}
-          <span className="text-[8px] font-black text-[#008751] uppercase px-8 tracking-widest inline-block">{CHANNEL_INTRO}</span>
-        </div>
-      </section>
+      {/* NEWS SECTIONS REMOVED AS REQUESTED */}
 
-      {/* 3. NEWS HIGHLIGHTS (RESTORED) */}
-      <div className="bg-white/50 backdrop-blur-md p-4 rounded-3xl border border-green-100 shadow-sm min-h-[200px]">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-sm font-black uppercase tracking-tight flex items-center">
-            <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
-            News Highlights
-          </h2>
-          <span className="text-[10px] font-black uppercase opacity-40">Live Feed</span>
-        </div>
-
-        {news.length > 0 ? (
-          <div className="space-y-4">
-            {news.map((item) => (
-              <div key={item.id} className="group border-b border-green-50 last:border-0 pb-4 last:pb-0 animate-scale-in">
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-[10px] font-black text-white bg-[#008751] px-2 py-0.5 rounded-full uppercase">
-                    {item.category}
-                  </span>
-                  <span className="text-[8px] font-black opacity-30 uppercase">
-                    {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-                <h3 className="text-sm font-black leading-snug group-hover:text-green-600 transition-colors">
-                  {item.title}
-                </h3>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 opacity-40">
-            <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-3 animate-pulse">
-              <i className="fa-solid fa-satellite-dish text-xl"></i>
-            </div>
-            <p className="text-[10px] font-black uppercase tracking-widest">Connecting to Diaspora Network...</p>
-          </div>
-        )}
-      </div>
+      {/* NEWS HIGHLIGHTS REMOVED */}
 
       {/* 3. SPONSORED HIGHLIGHTS */}
       <section className="space-y-1">
