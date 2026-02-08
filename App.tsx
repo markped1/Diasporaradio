@@ -583,7 +583,17 @@ const App: React.FC = () => {
 
       <main className="flex-grow pt-1 px-1.5">
         <RadioPlayer
-          onStateChange={setIsRadioPlaying}
+          onStateChange={async (playing) => {
+            setIsRadioPlaying(playing);
+            if (role === UserRole.ADMIN) {
+              // Admin interaction with the player UI should sync to listeners
+              await dbService.updateMidwayState({
+                isPlaying: playing,
+                broadcastPulse: Date.now(),
+                lastEvent: { type: playing ? 'PLAY' : 'STOP', timestamp: Date.now() }
+              });
+            }
+          }}
           activeTrackUrl={activeTrackUrl}
           currentTrackName={currentTrackName}
           forcePlaying={isRadioPlaying}

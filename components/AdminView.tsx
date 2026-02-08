@@ -153,8 +153,9 @@ const AdminView: React.FC<AdminViewProps> = ({
       setStatusMsg(failCount === 0 ? `Success: ${successCount} items added.` : `Mixed Results: ${successCount} added, ${failCount} failed.`);
       onRefreshData();
       await loadData();
-    } catch (error) {
-      setStatusMsg('Import Error.');
+    } catch (error: any) {
+      console.error("Batch Import Error:", error);
+      setStatusMsg(error.message || 'Import Error.');
     } finally {
       setIsProcessing(false);
       setUploadProgress(0);
@@ -320,6 +321,18 @@ const AdminView: React.FC<AdminViewProps> = ({
                     {isRadioPlaying ? 'BROADCASTING LIVE' : 'STATION ON STANDBY'}
                   </h2>
                 </div>
+
+                {/* 🔴 MASTER BROADCAST TOGGLE */}
+                <button
+                  onClick={onToggleRadio}
+                  className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all border-4 ${isRadioPlaying
+                    ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/20'
+                    : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/20'
+                    }`}
+                >
+                  <i className={`fas ${isRadioPlaying ? 'fa-stop-circle' : 'fa-play-circle'} mr-2 text-sm`}></i>
+                  {isRadioPlaying ? 'Stop Master Broadcast' : 'Start Master Broadcast'}
+                </button>
 
                 <div className="flex flex-col space-y-1">
                   <span className="text-[7px] font-black text-green-800/40 uppercase tracking-[0.3em]">Master Engine Status</span>
@@ -507,9 +520,22 @@ const AdminView: React.FC<AdminViewProps> = ({
       {
         activeTab === 'media' && (
           <div className="space-y-4">
-            <div className="flex bg-[#008751]/5 p-1 rounded-xl border border-green-100">
-              <button onClick={() => setMediaSubTab('audio')} className={`flex-1 py-2 text-[8px] font-black uppercase rounded-lg ${mediaSubTab === 'audio' ? 'bg-white text-[#008751] shadow-sm' : 'text-green-600/60'}`}>Tracks</button>
-              <button onClick={() => setMediaSubTab('video')} className={`flex-1 py-2 text-[8px] font-black uppercase rounded-lg ${mediaSubTab === 'video' ? 'bg-white text-[#008751] shadow-sm' : 'text-green-600/60'}`}>Ads</button>
+            <div className="flex bg-[#008751]/5 p-1 rounded-xl border border-green-100 items-center justify-between">
+              <div className="flex flex-grow space-x-1">
+                <button onClick={() => setMediaSubTab('audio')} className={`flex-grow py-2 text-[8px] font-black uppercase rounded-lg ${mediaSubTab === 'audio' ? 'bg-white text-[#008751] shadow-sm' : 'text-green-600/60'}`}>Tracks</button>
+                <button onClick={() => setMediaSubTab('video')} className={`flex-grow py-2 text-[8px] font-black uppercase rounded-lg ${mediaSubTab === 'video' ? 'bg-white text-[#008751] shadow-sm' : 'text-green-600/60'}`}>Ads</button>
+              </div>
+              <button
+                onClick={async () => {
+                  setStatusMsg('Refreshing Library...');
+                  await loadData();
+                  setTimeout(() => setStatusMsg(''), 1000);
+                }}
+                className="px-3 text-green-600 hover:text-green-800 transition-colors"
+                title="Refresh Library"
+              >
+                <i className="fas fa-sync-alt text-[10px]"></i>
+              </button>
             </div>
             {mediaSubTab === 'video' && (
               <button onClick={() => triggerUpload('video/*,image/*')} className="w-full bg-blue-600 text-white py-4 rounded-2xl flex flex-col items-center justify-center shadow-lg active:scale-95 transition-all"><i className="fas fa-cloud-upload-alt text-xl mb-1"></i><span className="text-[10px] font-black uppercase tracking-widest">Upload New Ad Content</span></button>

@@ -216,7 +216,7 @@ class DBService {
     // If it's a cloud file (URL exists and No binary file), sync to Global Persistent Library
     if (file.url && !file.file && supabase) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('media_library')
           .upsert({
             id: file.id,
@@ -227,10 +227,19 @@ class DBService {
             likes: file.likes || 0
           });
 
+        if (error) {
+          console.error("Supabase Media Library sync error:", error);
+          if (error.message.includes('relation "media_library" does not exist')) {
+            throw new Error("Cloud Persistence Failed: Table 'media_library' missing. Please run the SQL provided in the instructions.");
+          }
+          throw error;
+        }
+
         // Also trigger a pulse to notify listeners of library update
         await this.sendPulse('SYNC');
-      } catch (e) {
+      } catch (e: any) {
         console.error("Global Library persistence failed:", e);
+        throw e; // Propagate to UI
       }
     }
   }
