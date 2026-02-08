@@ -55,6 +55,7 @@ const AdminView: React.FC<AdminViewProps> = ({
   const [nextSyncIn, setNextSyncIn] = useState<string>('');
   const [midway, setMidway] = useState<MidwayState | null>(null);
   const [apiHealth, setApiHealth] = useState<'IDLE' | 'CHECKING' | 'HEALTHY' | 'ERROR'>('IDLE');
+  const [cloudMode, setCloudMode] = useState(true); // Default to global broadcast
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -102,11 +103,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     setIsProcessing(true);
     let count = 0;
     try {
-      const isCloud = window.confirm(
-        "🚀 BROADCAST TO GLOBAL LISTENERS? \n\n" +
-        "Click OK to upload to CLOUD so everyone worldwide can hear this music. \n" +
-        "Click Cancel if you only want to listen locally on this device."
-      );
+      const isCloud = cloudMode; // Use the toggle state instead of window.confirm
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -288,12 +285,26 @@ const AdminView: React.FC<AdminViewProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => folderInputRef.current?.click()} className="bg-white p-4 rounded-2xl border border-green-100 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 shadow-sm"><i className="fas fa-folder-open text-lg text-green-600"></i><span className="text-[8px] font-black uppercase tracking-widest">Import Folder</span></button>
-              <div className="bg-white p-4 rounded-2xl border border-amber-100 space-y-2 shadow-sm">
-                <h3 className="text-[7px] font-black uppercase tracking-widest text-amber-600">Jingles</h3>
-                <div className="flex space-x-2">
-                  <button onClick={() => onPlayJingle?.(1)} className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-[7px] font-black uppercase">ID 1</button>
-                  <button onClick={() => onPlayJingle?.(2)} className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-[7px] font-black uppercase">ID 2</button>
-                </div>
+
+              <button
+                onClick={() => setCloudMode(!cloudMode)}
+                className={`p-4 rounded-2xl border flex flex-col items-center justify-center space-y-2 shadow-sm transition-all ${cloudMode ? 'bg-green-600 text-white border-green-400' : 'bg-white text-green-600 border-green-100'}`}
+              >
+                <i className={`fas ${cloudMode ? 'fa-globe-africa' : 'fa-laptop-house'} text-lg`}></i>
+                <span className="text-[8px] font-black uppercase tracking-widest">
+                  {cloudMode ? '🌍 Global Broadcast ON' : '🏠 Local Only Mode'}
+                </span>
+                <span className="text-[5px] uppercase opacity-70">
+                  {cloudMode ? 'Everyone can hear cloud music' : 'Private testing on this device'}
+                </span>
+              </button>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-amber-100 space-y-2 shadow-sm">
+              <h3 className="text-[7px] font-black uppercase tracking-widest text-amber-600">Jingles</h3>
+              <div className="flex space-x-2">
+                <button onClick={() => onPlayJingle?.(1)} className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-[7px] font-black uppercase">ID 1</button>
+                <button onClick={() => onPlayJingle?.(2)} className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-[7px] font-black uppercase">ID 2</button>
               </div>
             </div>
           </div>
