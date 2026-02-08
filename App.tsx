@@ -252,8 +252,9 @@ const App: React.FC = () => {
       console.log("Midway Sync (App Sync):", remoteState);
 
       // 1. Sync Playback State (On-Air status)
-      // We apply the remote state if it differs from our local ref
-      if (remoteState.isPlaying !== isRadioPlayingRef.current) {
+      // DECOUPLED: We only sync isPlaying if the user is an ADMIN.
+      // For listeners, we let them control their own Play button to avoid "stuck" states.
+      if (role === UserRole.ADMIN && remoteState.isPlaying !== isRadioPlayingRef.current) {
         setIsRadioPlaying(remoteState.isPlaying);
       }
 

@@ -10,6 +10,30 @@ export interface WeatherData {
   location: string;
 }
 
+const NEWSDATA_API_KEY = "pub_d5f6ffb151d24f91b0df48a85ad55f2f";
+
+async function fetchNewsDataIo(): Promise<NewsItem[]> {
+  try {
+    console.log("📡 Fetching from NewsData.io...");
+    const response = await fetch(`https://newsdata.io/api/1/latest?country=ng&apikey=${NEWSDATA_API_KEY}`);
+    const data = await response.json();
+
+    if (data.status === "success" && data.results) {
+      return data.results.slice(0, 10).map((item: any) => ({
+        id: 'nd-' + Math.random().toString(36).substr(2, 9),
+        title: item.title,
+        content: item.description || item.content || "No description available.",
+        category: (item.category?.[0] || 'General') as any,
+        timestamp: Date.now()
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error("❌ NewsData.io fetch failed:", error);
+    return [];
+  }
+}
+
 export async function scanNigerianNewspapers(locationLabel: string = "Global"): Promise<{ news: NewsItem[], weather?: WeatherData }> {
   // Quota Guard: Check if we already have very fresh news (less than 15 mins old)
   const lastSync = await dbService.getLastSyncTime();
@@ -100,20 +124,36 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
       const isToolError = error?.message?.includes('search') || error?.message?.includes('tool') || error?.message?.includes('permission');
 
       if (isToolError) {
-        console.warn("⚠️ Google Search tool is restricted. Falling back to General Knowledge News...");
-        try {
-          const fallbackAi = getAIClient();
-          const fallbackResponse = await fallbackAi.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: `Generate a list of 5 currently relevant news headlines for Nigeria (Politics, Business, Entertainment). 
-            Return ONLY a valid JSON array of objects with 'headline', 'category', and 'summary' fields.`,
-          });
-          const text = fallbackResponse.text;
-          const cleanedText = text.replace(/```json|```/g, "").trim();
-          const fallbackNews = JSON.parse(cleanedText);
-          return { news: fallbackNews };
-        } catch (fallbackError) {
-          console.error("❌ Fallback news generation also failed:", fallbackError);
+        console.warn("⚠️ Google Search tool is restricted. Trying NewsData.io + General Knowledge...");
+
+        const [newsDataNews, geminiNews] = await Promise.all([
+          fetchNewsDataIo(),
+          (async () => {
+            try {
+              const fallbackAi = getAIClient();
+              const fallbackResponse = await fallbackAi.models.generateContent({
+                model: "gemini-1.5-flash",
+                contents: `Generate a list of 5 currently relevant news headlines for the Nigerian Diaspora. 
+                Return ONLY a valid JSON array of objects with 'title', 'category', and 'content' (detailed) fields.`,
+              });
+              const text = fallbackResponse.text;
+              const cleanedText = text.replace(/```json|```/g, "").trim();
+              return JSON.parse(cleanedText).map((item: any) => ({
+                id: 'gen-' + Math.random().toString(36).substr(2, 9),
+                ...item,
+                timestamp: Date.now()
+              }));
+            } catch (e) {
+              console.error("Gemini fallback failed:", e);
+              return [];
+            }
+          })()
+        ]);
+
+        const combinedNews = [...newsDataNews, ...geminiNews];
+        if (combinedNews.length > 0) {
+          await dbService.saveNews(combinedNews);
+          return { news: combinedNews };
         }
       }
 
