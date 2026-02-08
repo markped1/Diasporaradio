@@ -143,6 +143,19 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
       }
 
       console.error("Audio Playback Error:", message, target.error);
+
+      // CORS FALLBACK: If source not supported and we have crossOrigin enabled, try disabling it
+      if (target.error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED && target.crossOrigin === 'anonymous') {
+        console.warn("CORS/Source error detected - Attempting fallback without anonymous crossOrigin");
+        target.removeAttribute('crossorigin');
+        const currentSrc = target.src;
+        target.src = ''; // Force reset
+        target.load();
+        target.src = currentSrc;
+        target.play().catch(err => console.error("Fallback play failed:", err));
+        return; // Don't set error state yet
+      }
+
       setErrorMessage(message);
       setStatus('ERROR');
       setIsPlaying(false);

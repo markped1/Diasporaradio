@@ -571,25 +571,47 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f0fff4] text-[#008751] flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden border-x border-green-100/30">
-      <header className="p-2 sticky top-0 z-40 bg-white/90 backdrop-blur-md flex justify-between items-center border-b border-green-50 shadow-sm">
-        <div className="flex flex-col">
-          <h1 className="text-[11px] font-black italic uppercase leading-none text-green-950">{APP_NAME}</h1>
-          <p className="text-[6px] text-green-950/60 font-black uppercase mt-0.5 tracking-widest">Designed by {DESIGNER_NAME}</p>
+      <header className="sticky top-0 z-40 bg-white shadow-md flex items-stretch h-14 overflow-hidden border-b border-green-50">
+        {/* LEFT GREEN STRIPE */}
+        <div className="w-12 bg-[#008751] flex items-center justify-center space-x-0.5 px-1 relative">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className={`strand strand-${i} ${isRadioPlaying ? '' : 'paused'}`}></div>
+          ))}
+          <div className="absolute inset-0 bg-green-900/10 pointer-events-none"></div>
         </div>
-        <div className="flex items-center space-x-2">
-          {isDucking && <span className="text-[7px] font-black uppercase text-red-500 animate-pulse bg-red-50 px-1 rounded shadow-sm border border-red-100">Ducking Active</span>}
-          {role === UserRole.ADMIN && (
-            <div className={`px-1.5 py-0.5 rounded-full border text-[6px] font-black uppercase ${isRadioPlaying ? 'bg-green-500/10 border-green-500/50 text-green-700' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
-              <i className="fas fa-signal mr-1"></i>
-              {isRadioPlaying ? 'Signal Live' : 'Signal Off'}
-            </div>
-          )}
-          <button
-            onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
-            className="px-2 py-0.5 rounded-full border border-green-950 text-[7px] font-black uppercase text-green-950 hover:bg-green-50 transition-colors"
-          >
-            {role === UserRole.ADMIN ? 'Exit Admin' : 'Admin Login'}
-          </button>
+
+        {/* CENTER WHITE SECTION */}
+        <div className="flex-grow bg-white flex flex-col items-center justify-center px-4 relative min-w-0">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-[13px] font-black tracking-[0.2em] text-[#008751] uppercase italic whitespace-nowrap">NDR RADIO</h1>
+            {isRadioPlaying && (
+              <span className="flex space-x-0.5 items-end h-3">
+                <span className="w-0.5 bg-red-500 animate-pulse h-1"></span>
+                <span className="w-0.5 bg-red-500 animate-pulse h-2" style={{ animationDelay: '0.2s' }}></span>
+                <span className="w-0.5 bg-red-500 animate-pulse h-1.5" style={{ animationDelay: '0.4s' }}></span>
+              </span>
+            )}
+          </div>
+          <p className="text-[5.5px] text-green-900/40 font-black uppercase tracking-[0.4em] mt-0.5">Diaspora Relay Network</p>
+
+          {/* STATUS INDICATORS */}
+          <div className="absolute right-2 top-1 flex flex-col items-end space-y-0.5">
+            {isRadioPlaying && <span className="text-[5px] font-black uppercase text-red-500 bg-red-50 px-1 rounded-sm border border-red-100 flex items-center"><i className="fas fa-circle text-[4px] mr-1 animate-ping"></i> LIVE</span>}
+            <button
+              onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
+              className="text-[6px] font-black uppercase text-green-900/30 hover:text-green-900 transition-colors bg-green-50/50 hover:bg-green-100 px-1.5 py-0.5 rounded border border-green-100/50"
+            >
+              {role === UserRole.ADMIN ? 'Log Out' : 'Admin'}
+            </button>
+          </div>
+        </div>
+
+        {/* RIGHT GREEN STRIPE */}
+        <div className="w-12 bg-[#008751] flex items-center justify-center space-x-0.5 px-1 relative">
+          {[5, 4, 3, 2, 1].map(i => (
+            <div key={i} className={`strand strand-${i} ${isRadioPlaying ? '' : 'paused'}`}></div>
+          ))}
+          <div className="absolute inset-0 bg-green-900/10 pointer-events-none"></div>
         </div>
       </header>
 
@@ -665,7 +687,9 @@ const App: React.FC = () => {
 
               const isLocalBlob = t.url.startsWith('blob:') || t.url.startsWith('data:');
               // Ensure we broadcast the CLOUD URL if available, even if playing locally
-              const trackInfo = playlistRef.current.find(m => m.id === t.id);
+              // Search in both audioPlaylist and sponsoredMedia
+              const allMedia = [...playlistRef.current, ...sponsoredMedia];
+              const trackInfo = allMedia.find(m => m.id === t.id);
               const broadcastUrl = trackInfo?.url || (isLocalBlob ? null : t.url);
 
               await dbService.updateMidwayState({

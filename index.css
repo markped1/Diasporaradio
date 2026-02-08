@@ -96,3 +96,50 @@
 iframe[src*="puter.com"] {
   pointer-events: none !important;
 }
+
+@keyframes strand-dance {
+
+  0%,
+  100% {
+    height: 10%;
+    opacity: 0.3;
+  }
+
+  50% {
+    height: 80%;
+    opacity: 0.8;
+  }
+}
+
+.strand {
+  width: 2px;
+  background: white;
+  border-radius: 1px;
+  animation: strand-dance 1.2s ease-in-out infinite;
+}
+
+.strand.paused {
+  animation-play-state: paused;
+  height: 20% !important;
+  opacity: 0.2;
+}
+
+.strand-1 {
+  animation-delay: 0.1s;
+}
+
+.strand-2 {
+  animation-delay: 0.3s;
+}
+
+.strand-3 {
+  animation-delay: 0.2s;
+}
+
+.strand-4 {
+  animation-delay: 0.4s;
+}
+
+.strand-5 {
+  animation-delay: 0.15s;
+}
