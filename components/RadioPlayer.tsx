@@ -313,14 +313,14 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
       setStatus('LOADING');
       setErrorMessage('');
 
-      // Watchdog: If loading takes > 8s, reset status to avoid stuck spinner
+      // Watchdog: If loading takes > 5s, reset status to avoid stuck spinner
       const timeoutId = setTimeout(() => {
         if (statusRef.current === 'LOADING') {
           console.warn("Playback watchdog triggered: Stream loading took too long.");
           setStatus('IDLE');
-          setErrorMessage('Stream connection timeout - Try again');
+          setErrorMessage('Slow connection. Try clicking Play again or resetting.');
         }
-      }, 8000);
+      }, 5000);
 
       try {
         // Essential for mobile/PWA: Init context on user interaction
@@ -389,6 +389,15 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
             status === 'ERROR' ? <i className="fas fa-exclamation-triangle text-red-500"></i> :
               isPlaying ? <i className="fas fa-pause text-2xl"></i> : <i className="fas fa-play text-2xl ml-1"></i>}
         </button>
+
+        {status === 'LOADING' && (
+          <button
+            onClick={() => window.location.reload()}
+            className="text-[6px] font-black uppercase text-green-900/50 hover:text-green-950 underline underline-offset-2 animate-pulse"
+          >
+            Stuck? Refresh App
+          </button>
+        )}
 
         <div className="w-32 flex items-center space-x-2">
           <i className="fas fa-volume-down text-green-600 text-[8px]"></i>
