@@ -559,7 +559,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
           <div className="space-y-1">
             <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
-              {activeFolder ? `REELING: ${activeFolder}` : (activeTrackUrl ? currentTrackName : 'STATION STANDBY')}
+              {activeFolder ? `REELING: ${activeFolder}` : (currentTrackName || 'NDR RADIO')}
             </h4>
             <div className="flex items-center space-x-2">
               <span className="text-[7px] font-mono text-green-400/80">{formatTime(currentTime)}</span>

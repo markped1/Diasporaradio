@@ -354,10 +354,18 @@ const App: React.FC = () => {
 
   // Midway Sync Logic (Supabase Realtime)
   useEffect(() => {
-    // Initial fetch to get the current state
+    // Initial fetch to get the current state and AUTO-JOIN if broadcast is live
     dbService.getMidwayState()
       .then(remoteState => {
-        if (remoteState) handleSyncUpdate(remoteState);
+        if (remoteState) {
+          handleSyncUpdate(remoteState);
+
+          // AUTO-SYNC FOR LISTENERS: If Admin is broadcasting, join immediately
+          if (role === UserRole.LISTENER && remoteState.isPlaying && remoteState.activeTrackUrl) {
+            console.log("Auto-joining live broadcast for listener");
+            setHasInteracted(true); // Enable audio playback
+          }
+        }
       })
       .catch(err => {
         console.warn("Initial Midway sync failed:", err);
@@ -370,7 +378,7 @@ const App: React.FC = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleSyncUpdate]);
+  }, [handleSyncUpdate, role]);
 
   useEffect(() => {
     const handleInteraction = () => {
@@ -757,10 +765,9 @@ const App: React.FC = () => {
               </span>
             ))}
             {news.length === 0 && (
-              <span className="mx-12 text-[9px] font-black uppercase tracking-[0.12em] flex items-center">
-                <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
-                {CHANNEL_INTRO}
-              </span>
+              <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
+                {activeFolder ? `REELING: ${activeFolder}` : (currentTrackName || 'NDR RADIO')}
+              </h4>
             )}
           </div>
         </div>
