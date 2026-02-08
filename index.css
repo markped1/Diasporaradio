@@ -42,3 +42,22 @@
 * {
   color: inherit;
 }
+
+/* 🛡️ SUPPRESS PUTER TRUST BANNER (Fixes UI Blocking) */
+#puter-trust-banner,
+[id*="puter-trust-banner"],
+.puter-trust-banner {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+
+/* Prevent any Puter containers from catching clicks */
+iframe[src*="puter.com"] {
+  pointer-events: none !important;
+}
