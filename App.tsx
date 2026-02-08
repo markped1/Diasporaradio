@@ -28,6 +28,7 @@ const App: React.FC = () => {
   const [audioPlaylist, setAudioPlaylist] = useState<MediaFile[]>([]);
   const [adminMessages, setAdminMessages] = useState<AdminMessage[]>([]);
   const [reports, setReports] = useState<ListenerReport[]>([]);
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
 
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
@@ -277,7 +278,12 @@ const App: React.FC = () => {
       setIsRadioPlaying(remoteState.isPlaying);
     }
 
-    // 2. Sync Track Info
+    // 2. Sync Folder Context
+    if (remoteState.activeFolder !== activeFolder) {
+      setActiveFolder(remoteState.activeFolder || null);
+    }
+
+    // 3. Sync Track Info
     if (remoteState.activeTrackId !== activeTrackIdRef.current || remoteState.activeTrackName !== currentTrackName) {
       if (remoteState.activeTrackUrl) {
         setActiveTrackId(remoteState.activeTrackId);
@@ -341,7 +347,7 @@ const App: React.FC = () => {
       console.log("New Broadcast Pulse - Triggering Data Refresh...");
       fetchData();
     }
-  }, [currentTrackName, cleanTrackName, fetchData, playRawPcm]);
+  }, [currentTrackName, cleanTrackName, fetchData, playRawPcm, activeFolder]);
 
   // Midway Sync Logic (Supabase Realtime)
   useEffect(() => {
@@ -409,12 +415,22 @@ const App: React.FC = () => {
   }, [fetchData, currentLocation]);
 
   const handlePlayNext = useCallback(async () => {
-    const list = playlistRef.current;
-    if (list.length === 0) return;
+    let playlist = playlistRef.current;
 
-    const currentIndex = list.findIndex(t => t.id === activeTrackId);
-    let nextIndex = isShuffle ? Math.floor(Math.random() * list.length) : (currentIndex + 1) % list.length;
-    const track = list[nextIndex];
+    // If a folder is active, restrict playback to that folder
+    if (activeFolder) {
+      playlist = playlist.filter(m => m.folder === activeFolder);
+      if (playlist.length === 0) {
+        playlist = playlistRef.current; // Fallback
+        setActiveFolder(null); // Clear active folder if it doesn't exist anymore
+      }
+    }
+
+    if (playlist.length === 0) return;
+
+    const currentIndex = playlist.findIndex(t => t.id === activeTrackId);
+    let nextIndex = isShuffle ? Math.floor(Math.random() * playlist.length) : (currentIndex + 1) % playlist.length;
+    const track = playlist[nextIndex];
     if (track) {
       // IMMEDIATE FEEDBACK for the user performing the action
       setActiveTrackId(track.id);
@@ -423,17 +439,25 @@ const App: React.FC = () => {
       setIsRadioPlaying(true);
       setHasInteracted(true);
 
-      const isLocalBlob = track.url.startsWith('blob:') || track.url.startsWith('data:');
+      if (role === UserRole.ADMIN) {
+        const isLocalBlob = track.url.startsWith('blob:') || track.url.startsWith('data:');
 
-      // RELAY TO MIDWAY for everyone else
-      await dbService.updateMidwayState({
-        activeTrackId: track.id,
-        activeTrackName: cleanTrackName(track.name),
-        activeTrackUrl: isLocalBlob ? null : track.url,
-        isPlaying: true
-      });
+        // Find Cloud URL if available
+        const allMedia = [...playlistRef.current, ...sponsoredMedia];
+        const trackInfo = allMedia.find(m => m.id === track.id);
+        const broadcastUrl = trackInfo?.url || (isLocalBlob ? null : track.url);
+
+        // RELAY TO MIDWAY for everyone else
+        await dbService.updateMidwayState({
+          activeTrackId: track.id,
+          activeTrackName: cleanTrackName(track.name),
+          activeTrackUrl: broadcastUrl,
+          isPlaying: true,
+          broadcastPulse: Date.now()
+        });
+      }
     }
-  }, [activeTrackId, isShuffle]);
+  }, [activeTrackId, isShuffle, activeFolder, role]);
 
   const handlePlayAll = async () => {
     setHasInteracted(true);
@@ -569,6 +593,44 @@ const App: React.FC = () => {
     }
   };
 
+  const handlePlayFolder = async (folder: string) => {
+    // 1. Find all tracks in this folder
+    const folderTracks = playlistRef.current.filter(m => m.folder === folder);
+    if (folderTracks.length === 0) return;
+
+    // 2. Pick first track
+    const firstTrack = folderTracks[0];
+
+    // 3. Update local state
+    setActiveFolder(folder);
+    setActiveTrackId(firstTrack.id);
+    setActiveTrackUrl(firstTrack.url);
+    setCurrentTrackName(cleanTrackName(firstTrack.name));
+    setIsRadioPlaying(true);
+    setHasInteracted(true);
+
+    // 4. Update GLOBAL state
+    const allMedia = [...playlistRef.current, ...sponsoredMedia];
+    const trackInfo = allMedia.find(m => m.id === firstTrack.id);
+    const broadcastUrl = trackInfo?.url || (firstTrack.url.startsWith('blob:') ? null : firstTrack.url);
+
+    await dbService.updateMidwayState({
+      activeTrackId: firstTrack.id,
+      activeTrackName: cleanTrackName(firstTrack.name),
+      activeTrackUrl: broadcastUrl,
+      activeFolder: folder,
+      isPlaying: true,
+      broadcastPulse: Date.now(),
+      lastEvent: { type: 'PLAY', timestamp: Date.now() }
+    });
+
+    dbService.addLog({
+      id: Date.now().toString(),
+      action: `Master Broadcast: Started playing folder [${folder}]`,
+      timestamp: Date.now()
+    });
+  };
+
   const handlePlayJingle = async (idx: number) => {
     const audio = await getJingleAudio(idx === 1 ? JINGLE_1 : JINGLE_2);
     if (audio) await playRawPcm(audio, 'jingle');
@@ -668,6 +730,7 @@ const App: React.FC = () => {
           isDucking={isDucking}
           duckingType={duckingType}
           uiMode={role === UserRole.LISTENER ? 'listener' : 'full'}
+          activeFolder={activeFolder}
           onInteract={() => {
             setHasInteracted(true);
             // CATCH-UP LOGIC: Force a full sync update from the cloud immediately
@@ -733,6 +796,8 @@ const App: React.FC = () => {
               });
             }}
             isRadioPlaying={isRadioPlaying}
+            onPlayFolder={handlePlayFolder}
+            activeFolder={activeFolder}
             onToggleRadio={async () => {
               const newState = !isRadioPlaying;
               // IMMEDIATE FEEDBACK for Admin

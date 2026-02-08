@@ -15,6 +15,7 @@ interface RadioPlayerProps {
   duckingType?: 'news' | 'jingle' | null;
   onInteract?: () => void;
   uiMode?: 'full' | 'headless' | 'listener';
+  activeFolder?: string | null;
 }
 
 const RadioPlayer: React.FC<RadioPlayerProps> = ({
@@ -27,7 +28,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   isDucking = false,
   duckingType = null,
   onInteract,
-  uiMode = 'full'
+  uiMode = 'full',
+  activeFolder = null
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1.0);
@@ -557,7 +559,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
           <div className="space-y-1">
             <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
-              {activeTrackUrl ? currentTrackName : 'AWAITING SIGNAL...'}
+              {activeFolder ? `REELING: ${activeFolder}` : (activeTrackUrl ? currentTrackName : 'AWAITING SIGNAL...')}
             </h4>
             <div className="flex items-center space-x-2">
               <span className="text-[7px] font-mono text-green-400/80">{formatTime(currentTime)}</span>

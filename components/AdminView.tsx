@@ -16,10 +16,9 @@ interface AdminViewProps {
   onSkipNext: () => Promise<void>;
   onPushBroadcast?: (voiceText: string) => Promise<void>;
   onPlayJingle?: (index: 1 | 2) => Promise<void>;
-  onDiscussIssue?: (text: string) => Promise<boolean>;
-  onPing?: () => void;
-  news?: NewsItem[];
   onTriggerFullBulletin?: () => Promise<void>;
+  onPlayFolder?: (folder: string) => Promise<void>;
+  activeFolder?: string | null;
 }
 
 type Tab = 'command' | 'bulletin' | 'media' | 'inbox' | 'logs';
@@ -41,12 +40,15 @@ const AdminView: React.FC<AdminViewProps> = ({
   onDiscussIssue,
   onPing,
   news = [],
-  onTriggerFullBulletin
+  onTriggerFullBulletin,
+  onPlayFolder,
+  activeFolder
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [selectedFolderForMaster, setSelectedFolderForMaster] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [mediaList, setMediaList] = useState<MediaFile[]>([]);
   const [reports, setReports] = useState<ListenerReport[]>([]);
@@ -347,8 +349,42 @@ const AdminView: React.FC<AdminViewProps> = ({
 
                 <div className="bg-green-50/50 py-3 px-6 rounded-2xl border border-green-100/50 shadow-inner max-w-full">
                   <span className="text-[8px] font-black text-green-950 uppercase block tracking-[0.1em] truncate">
-                    {currentTrackName || 'NO ACTIVE SIGNAL'}
+                    {activeFolder ? `FOLDER: ${activeFolder}` : (currentTrackName || 'NO ACTIVE SIGNAL')}
                   </span>
+                </div>
+
+                {/* 📂 MASTER FOLDER SELECTION */}
+                <div className="w-full space-y-3 pt-2">
+                  <h3 className="text-[7px] font-black uppercase text-green-800/40 tracking-[0.3em]">Master Folder Relay</h3>
+
+                  {/* FOLDER QUICK LIST */}
+                  <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto no-scrollbar p-1">
+                    {Array.from(new Set(mediaList.map(m => m.folder || 'Uncategorized'))).map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setSelectedFolderForMaster(f)}
+                        className={`p-3 rounded-xl border text-[8px] font-black uppercase transition-all flex items-center justify-between ${selectedFolderForMaster === f
+                            ? 'bg-green-600 border-green-400 text-white shadow-md scale-105 z-10'
+                            : 'bg-white border-green-50 text-green-900/60 hover:border-green-200'
+                          }`}
+                      >
+                        <span className="truncate mr-2">{f}</span>
+                        {selectedFolderForMaster === f && <i className="fas fa-check-circle text-[10px]"></i>}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => selectedFolderForMaster && onPlayFolder?.(selectedFolderForMaster)}
+                    disabled={!selectedFolderForMaster}
+                    className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] transition-all border-b-4 ${selectedFolderForMaster
+                        ? 'bg-amber-500 border-amber-600 text-white shadow-lg active:scale-95 active:border-b-0'
+                        : 'bg-gray-100 border-gray-200 text-gray-400'
+                      }`}
+                  >
+                    <i className="fas fa-tower-broadcast mr-2 text-xs"></i>
+                    {selectedFolderForMaster ? `Relay [${selectedFolderForMaster}] to All` : 'Select Folder to Relay'}
+                  </button>
                 </div>
 
                 {isRadioPlaying && (

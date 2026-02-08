@@ -78,6 +78,7 @@ export interface MidwayState {
     timestamp: number;
   };
   broadcastPulse?: number; // Heartbeat/Trigger for sync
+  activeFolder?: string | null; // Currently broadcasting folder
   lastEvent?: {
     type: 'PLAY' | 'STOP' | 'SYNC';
     timestamp: number;
