@@ -270,7 +270,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         audioRef.current.play().catch((err) => {
           console.error("Audio Engine Play Failure:", err.message, err);
           setStatus('ERROR');
-          setErrorMessage(`Playback Blocked: ${err.message || 'Check Browser Permissions'}`);
+          setErrorMessage(`Playback Blocked: Tap to Unmute`);
         });
       } else if (!forcePlaying && !audioRef.current.paused) {
         audioRef.current.pause();
@@ -347,7 +347,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
       const targetSrc = activeTrackUrl;
       if (!targetSrc) {
         setStatus('IDLE');
-        setErrorMessage(forcePlaying ? 'Syncing Radio Signal... Tap again in 3s' : 'Awaiting Admin Broadcast...');
+        setErrorMessage('');
         return;
       }
 
@@ -559,7 +559,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
           <div className="space-y-1">
             <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
-              {activeFolder ? `REELING: ${activeFolder}` : (activeTrackUrl ? currentTrackName : 'AWAITING SIGNAL...')}
+              {activeFolder ? `REELING: ${activeFolder}` : (activeTrackUrl ? currentTrackName : 'STATION STANDBY')}
             </h4>
             <div className="flex items-center space-x-2">
               <span className="text-[7px] font-mono text-green-400/80">{formatTime(currentTime)}</span>
@@ -573,15 +573,20 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
         {/* Error Message */}
         {errorMessage && (
-          <div className="bg-red-500/10 px-4 py-2 rounded-xl border border-red-500/20 w-full animate-bounce">
-            <p className="text-[8px] font-bold text-red-400 text-center uppercase tracking-wide">{errorMessage}</p>
-          </div>
+          <button
+            onClick={() => { setErrorMessage(''); handlePlayPause(); }}
+            className="bg-red-500/20 px-4 py-2 rounded-xl border border-red-500/40 w-full animate-bounce hover:bg-red-500/30 transition-all"
+          >
+            <p className="text-[8px] font-black text-red-500 text-center uppercase tracking-wide">
+              {errorMessage} <i className="fas fa-play ml-2"></i>
+            </p>
+          </button>
         )}
 
         {/* Controls Grid */}
         <div className="flex items-center justify-between w-full px-2 relative">
           {/* JOIN BROADCAST OVERLAY (FOR LISTENERS) */}
-          {forcePlaying && !isPlaying && !errorMessage && status !== 'LOADING' && (
+          {forcePlaying && !isPlaying && status !== 'LOADING' && (
             <div className="absolute inset-x-0 -top-16 flex justify-center z-50 animate-bounce">
               <button
                 onClick={handlePlayPause}

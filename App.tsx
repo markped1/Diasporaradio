@@ -307,6 +307,9 @@ const App: React.FC = () => {
           setActiveTrackId(remoteState.activeTrackId);
           setActiveTrackUrl(DEFAULT_STREAM_URL || null);
           setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
+        } else {
+          // If totally lost, at least don't block the UI
+          setActiveTrackUrl(null);
         }
       }
     }
