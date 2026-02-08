@@ -8,7 +8,14 @@ import { dbService } from './services/dbService';
 import { app as firebaseApp } from './services/firebaseConfig'; // Initialize Firebase
 import { scanNigerianNewspapers } from './services/newsAIService';
 import { checkApiKey } from './services/geminiService';
-import { getDetailedBulletinAudio, getNewsAudio, getJingleAudio, getDiscussionAudio } from './services/aiDjService';
+import {
+  generateDjSegment,
+  getDetailedBulletinAudio,
+  getDetailedBulletinScript,
+  getNewsAudio,
+  getJingleAudio,
+  getDiscussionAudio
+} from './services/aiDjService';
 import { UserRole, MediaFile, AdminMessage, AdminLog, NewsItem, ListenerReport, MidwayState } from './types';
 import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2, DEFAULT_STREAM_URL, CHANNEL_INTRO } from './constants';
 
@@ -177,20 +184,27 @@ const App: React.FC = () => {
       await fetchData();
 
       if (freshNews.length > 0) {
-        // Step 2: Play Intro Jingle
-        const intro = await getJingleAudio(JINGLE_1);
-        if (intro) await playRawPcm(intro, 'jingle');
-
-        // Step 3: Generate and Play AI Audio
+        // Step 2: Generate Script and Sync to Listeners
         const hostName = isBrief ? "Thompson Obosa" : "Sara Obosa";
-        const audioData = await getDetailedBulletinAudio({
+        const scriptParams = {
           location: currentLocation,
           localTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           newsItems: freshNews.slice(0, 5),
           hostName: hostName,
           weather: weather,
           isBrief: isBrief
-        });
+        };
+        const fullScript = getDetailedBulletinScript(scriptParams);
+
+        // Broadcast the script to all listeners
+        await dbService.triggerBroadcastSync(fullScript, 'news');
+
+        // Step 3: Play Intro Jingle locally
+        const intro = await getJingleAudio(JINGLE_1);
+        if (intro) await playRawPcm(intro, 'jingle');
+
+        // Step 4: Generate and Play AI Audio locally
+        const audioData = await getDetailedBulletinAudio(scriptParams);
 
         if (audioData) {
           await playRawPcm(audioData, 'news');
@@ -215,6 +229,8 @@ const App: React.FC = () => {
   // Precise Heartbeat Scheduler
   useEffect(() => {
     const heartbeat = setInterval(() => {
+      if (role !== UserRole.ADMIN) return;
+
       const now = new Date();
       const currentMinute = now.getMinutes();
       const timeTag = `${now.getHours()}:${currentMinute}`;
@@ -237,7 +253,7 @@ const App: React.FC = () => {
     }, 1000); // Checking every second for precise start
 
     return () => clearInterval(heartbeat);
-  }, [runScheduledBroadcast]);
+  }, [runScheduledBroadcast, role]);
 
   const activeTrackIdRef = useRef<string | null>(null);
   const isRadioPlayingRef = useRef<boolean>(false);
@@ -299,9 +315,23 @@ const App: React.FC = () => {
       lastBroadcastIdRef.current = remoteState.activeBroadcast.id;
       const b = remoteState.activeBroadcast;
       if (b.type === 'news') {
-        getNewsAudio(b.text).then(audio => audio && playRawPcm(audio, 'news'));
+        (async () => {
+          const intro = await getJingleAudio(JINGLE_1);
+          if (intro) await playRawPcm(intro, 'jingle');
+          const audio = await getNewsAudio(b.text);
+          if (audio) await playRawPcm(audio, 'news');
+          const outro = await getJingleAudio(JINGLE_2);
+          if (outro) await playRawPcm(outro, 'jingle');
+        })();
       } else if (b.type === 'discussion') {
-        getDiscussionAudio(b.text).then(audio => audio && playRawPcm(audio, 'news'));
+        (async () => {
+          const intro = await getJingleAudio(JINGLE_1);
+          if (intro) await playRawPcm(intro, 'jingle');
+          const audio = await getDiscussionAudio(b.text);
+          if (audio) await playRawPcm(audio, 'news');
+          const outro = await getJingleAudio(JINGLE_2);
+          if (outro) await playRawPcm(outro, 'jingle');
+        })();
       }
     }
 
@@ -359,7 +389,11 @@ const App: React.FC = () => {
     fetchData();
     // Silent initial sync
     const syncTimeout = setTimeout(() => {
-      scanNigerianNewspapers(currentLocation).then(() => fetchData());
+      if (role === UserRole.ADMIN) {
+        scanNigerianNewspapers(currentLocation).then(() => fetchData());
+      } else {
+        fetchData();
+      }
       checkApiKey(); // Perform API health check diagnostic
     }, 3000);
 
@@ -392,12 +426,11 @@ const App: React.FC = () => {
       const isLocalBlob = track.url.startsWith('blob:') || track.url.startsWith('data:');
 
       // RELAY TO MIDWAY for everyone else
-      await dbService.setMidwayState({
+      await dbService.updateMidwayState({
         activeTrackId: track.id,
         activeTrackName: cleanTrackName(track.name),
         activeTrackUrl: isLocalBlob ? null : track.url,
-        isPlaying: true,
-        timestamp: Date.now()
+        isPlaying: true
       });
     }
   }, [activeTrackId, isShuffle]);
@@ -417,12 +450,11 @@ const App: React.FC = () => {
     const isLocalBlob = track.url.startsWith('blob:') || track.url.startsWith('data:');
 
     // RELAY TO MIDWAY
-    await dbService.setMidwayState({
+    await dbService.updateMidwayState({
       activeTrackId: track.id,
       activeTrackName: cleanTrackName(track.name),
       activeTrackUrl: isLocalBlob ? null : track.url,
-      isPlaying: true,
-      timestamp: Date.now()
+      isPlaying: true
     });
   };
 

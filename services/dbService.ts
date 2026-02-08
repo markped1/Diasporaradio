@@ -144,9 +144,7 @@ class DBService {
     // Sync to Supabase so listeners see it
     try {
       if (supabase) {
-        const state = await this.getMidwayState();
-        await this.setMidwayState({
-          ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+        await this.updateMidwayState({
           latest_news: freshOnly
         });
       }
@@ -456,9 +454,7 @@ class DBService {
 
   async triggerBroadcastSync(text: string, type: 'news' | 'jingle' | 'discussion'): Promise<void> {
     this.checkConfig();
-    const state = await this.getMidwayState();
-    const updatedState: MidwayState = {
-      ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+    await this.updateMidwayState({
       activeBroadcast: {
         id: Math.random().toString(36).substr(2, 9),
         text,
@@ -466,22 +462,18 @@ class DBService {
         timestamp: Date.now()
       },
       broadcastPulse: Date.now() // Force event trigger
-    };
-    await this.setMidwayState(updatedState);
+    });
   }
 
   async sendPulse(type: 'PLAY' | 'STOP' | 'SYNC'): Promise<void> {
     this.checkConfig();
-    const state = await this.getMidwayState();
-    const updatedState: MidwayState = {
-      ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+    await this.updateMidwayState({
       broadcastPulse: Date.now(),
       lastEvent: {
         type,
         timestamp: Date.now()
       }
-    };
-    await this.setMidwayState(updatedState);
+    });
   }
 }
 
