@@ -111,6 +111,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     audioRef.current = audio;
 
     const handlePlay = () => {
+      console.log("▶️ [RadioPlayer] Play called");
       setStatus('PLAYING');
       setIsPlaying(true);
       onStateChange(true);
@@ -144,7 +145,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         }
       }
 
-      console.error("Audio Playback Error:", message, target.error);
+      console.error("❌ [RadioPlayer] Audio Playback Error:", message, target.error);
 
       // CORS FALLBACK: If source not supported and we have crossOrigin enabled, try disabling it
       if (target.error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED && target.crossOrigin === 'anonymous') {
@@ -214,6 +215,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
       }
 
       audio.src = targetSrc;
+      console.log(`🔗 [RadioPlayer] Setting Audio Source: ${targetSrc}`);
       audio.preload = 'none';
     }
 

@@ -68,6 +68,7 @@ class DBService {
       ...partial,
       timestamp: Date.now()
     };
+    console.log("📤 [dbService] Sending Update:", newState);
     await this.setMidwayState(newState);
   }
 
@@ -381,6 +382,7 @@ class DBService {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'midway_state', filter: 'id=eq.global' },
         (payload) => {
+          console.log("📡 [dbService] RAW Realtime Payload:", payload);
           if (payload.new) onUpdate(payload.new as MidwayState);
         }
       )

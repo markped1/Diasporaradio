@@ -266,15 +266,17 @@ const App: React.FC = () => {
 
   // Midway Sync Logic (Supabase Realtime)
   const handleSyncUpdate = useCallback((remoteState: MidwayState) => {
-    console.log("Sync Update Received:", {
+    console.log("🔥 [App.tsx] Sync Update Received from Supabase:", {
       id: remoteState.activeTrackId,
       name: remoteState.activeTrackName,
       playing: remoteState.isPlaying,
-      pulse: remoteState.broadcastPulse
+      pulse: remoteState.broadcastPulse,
+      url: remoteState.activeTrackUrl
     });
 
     // 1. Sync Playback State
     if (remoteState.isPlaying !== isRadioPlayingRef.current) {
+      console.log(`🎵 [App.tsx] State Change Detected: isPlaying ${isRadioPlayingRef.current} -> ${remoteState.isPlaying}`);
       setIsRadioPlaying(remoteState.isPlaying);
     }
 
@@ -289,6 +291,7 @@ const App: React.FC = () => {
         setActiveTrackId(remoteState.activeTrackId);
         setActiveTrackUrl(remoteState.activeTrackUrl);
         setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
+        console.log(`🔗 [App.tsx] Direct URL Update: ${remoteState.activeTrackUrl}`);
       } else {
         // Fallback to registry lookups
         let track = playlistRef.current.find(t => t.id === remoteState.activeTrackId);
