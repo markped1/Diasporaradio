@@ -38,7 +38,7 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
       - 'weather': Object with 'condition', 'temp', 'location'.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp", // FIXED: Updated model name
+        model: "gemini-2.0-flash", // UPDATED: Consistent model name
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -95,8 +95,10 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
         news: processedNews,
         weather: data.weather
       };
-    } catch (error) {
-      console.error("❌ Advanced News/Weather scanning failed", error);
+    } catch (error: any) {
+      console.error("❌ Advanced News/Weather scanning failed:", error);
+      if (error?.message) console.error("Error Message:", error.message);
+      if (error?.code) console.error("Error Code:", error.code);
       return { news: existingNews };
     }
   });

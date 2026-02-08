@@ -42,11 +42,21 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
   const onTrackEndedRef = useRef(onTrackEnded);
   const onPeakReachedRef = useRef(onPeakReached);
+  const statusRef = useRef<'IDLE' | 'LOADING' | 'PLAYING' | 'ERROR'>('IDLE');
+  const volumeRef = useRef(volume);
 
   useEffect(() => {
     onTrackEndedRef.current = onTrackEnded;
     onPeakReachedRef.current = onPeakReached;
   }, [onTrackEnded, onPeakReached]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
 
   const initAudioContext = () => {
     try {
@@ -137,7 +147,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
     const handleCanPlay = () => {
       console.log("Stream ready to play");
-      if (status === 'LOADING') {
+      if (statusRef.current === 'LOADING') {
         setStatus('IDLE');
       }
     };
@@ -267,9 +277,9 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     } else {
       // RESUME / RESTORE VOLUME
       if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        gainNodeRef.current.gain.setTargetAtTime(volume, audioContextRef.current.currentTime, 0.5);
+        gainNodeRef.current.gain.setTargetAtTime(volumeRef.current, audioContextRef.current.currentTime, 0.5);
       } else {
-        audioRef.current.volume = volume;
+        audioRef.current.volume = volumeRef.current;
       }
 
       // If it was a paused local track that should be playing, resume it
@@ -279,11 +289,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     }
   }, [isDucking, volume, isPlaying]);
 
-  const statusRef = useRef<'IDLE' | 'LOADING' | 'PLAYING' | 'ERROR'>('IDLE');
-
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
+  // Removed local statusRef here as it's now at top level
 
   const handlePlayPause = async () => {
     if (!audioRef.current) return;

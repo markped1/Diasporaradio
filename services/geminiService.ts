@@ -3,12 +3,12 @@ import { GoogleGenAI } from "@google/genai";
 export const getAIClient = () => {
   // FIXED: Use import.meta.env for Vite and correct variable name
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  
+
   if (!apiKey || apiKey === 'PLACEHOLDER_API_KEY') {
     console.error('❌ Gemini API key is missing or invalid! Add your key to .env.local');
     throw new Error('Gemini API key not configured');
   }
-  
+
   return new GoogleGenAI({ apiKey });
 };
 
@@ -33,7 +33,7 @@ export async function generateText(prompt: string, systemInstruction: string) {
   return withRetry(async () => {
     const ai = getAIClient();
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp', // FIXED: Updated model name
+      model: 'gemini-2.0-flash', // UPDATED: Consistent model name
       contents: prompt,
       config: {
         systemInstruction,
