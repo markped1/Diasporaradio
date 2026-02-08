@@ -276,15 +276,48 @@ const AdminView: React.FC<AdminViewProps> = ({
       {
         activeTab === 'command' && (
           <div className="space-y-4">
-            <div className="bg-white p-6 rounded-3xl text-center border border-green-100 shadow-md relative">
-              <button onClick={isRadioPlaying ? onToggleRadio : onPlayAll} className={`w-28 h-28 rounded-full border-8 ${isRadioPlaying ? 'bg-red-500 border-red-50' : 'bg-[#008751] border-green-50'} text-white flex flex-col items-center justify-center mx-auto mb-4 shadow-2xl active:scale-95 transition-all`}>
-                <i className={`fas ${isRadioPlaying ? 'fa-stop' : 'fa-play'} text-3xl mb-1`}></i>
-                <span className="text-[9px] font-black uppercase tracking-widest">{isRadioPlaying ? 'Stop' : 'Go Live'}</span>
-              </button>
-              <div className="bg-green-50 py-2.5 px-5 rounded-2xl border border-green-100 inline-block shadow-inner"><span className="text-[8px] font-black text-green-700 uppercase block tracking-widest truncate max-w-[200px]">{currentTrackName}</span></div>
+            {/* 📡 BROADCAST SIGNAL STATUS (Replaces redundant button) */}
+            <div className="bg-white p-6 rounded-3xl border-2 border-green-100 shadow-md relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5">
+                <i className="fas fa-tower-broadcast text-5xl"></i>
+              </div>
+
+              <div className="flex flex-col items-center space-y-4 text-center">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-3 h-3 rounded-full ${isRadioPlaying ? 'bg-red-500 animate-ping' : 'bg-gray-300'}`}></div>
+                  <h2 className={`text-xs font-black uppercase tracking-widest ${isRadioPlaying ? 'text-red-600' : 'text-gray-500'}`}>
+                    {isRadioPlaying ? 'BROADCASTING LIVE' : 'STATION ON STANDBY'}
+                  </h2>
+                </div>
+
+                <div className="flex flex-col space-y-1">
+                  <span className="text-[7px] font-black text-green-800/40 uppercase tracking-[0.3em]">Master Engine Status</span>
+                  <div className="flex justify-center space-x-1">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                      <div key={i} className={`w-1 h-3 rounded-full ${isRadioPlaying ? 'bg-green-500 animate-pulse' : 'bg-gray-100'}`} style={{ animationDelay: `${i * 0.1}s` }}></div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-green-50/50 py-3 px-6 rounded-2xl border border-green-100/50 shadow-inner max-w-full">
+                  <span className="text-[8px] font-black text-green-950 uppercase block tracking-[0.1em] truncate">
+                    {currentTrackName || 'NO ACTIVE SIGNAL'}
+                  </span>
+                </div>
+
+                {isRadioPlaying && (
+                  <p className="text-[6px] font-bold text-green-600/70 uppercase tracking-widest animate-pulse">
+                    Relaying to Global Diaspora...
+                  </p>
+                )}
+              </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => folderInputRef.current?.click()} className="bg-white p-4 rounded-2xl border border-green-100 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 shadow-sm"><i className="fas fa-folder-open text-lg text-green-600"></i><span className="text-[8px] font-black uppercase tracking-widest">Import Folder</span></button>
+              <button onClick={() => folderInputRef.current?.click()} className="bg-white p-4 rounded-2xl border border-green-100 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 shadow-sm active:scale-95 transition-all">
+                <i className="fas fa-folder-open text-lg text-green-600"></i>
+                <span className="text-[8px] font-black uppercase tracking-widest">Import Folder</span>
+              </button>
 
               <button
                 onClick={() => setCloudMode(!cloudMode)}

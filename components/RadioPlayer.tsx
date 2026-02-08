@@ -389,63 +389,116 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     <div className="flex flex-col items-center justify-center space-y-2 w-full">
       <Logo size="lg" analyser={analyser} isPlaying={isPlaying} />
 
-      <div className="w-full px-8 -mt-8 relative z-20">
+      <div className="w-full px-8 -mt-10 relative z-20 opacity-0 pointer-events-none">
+        {/* Hidden internal progress bar, replaced by premium display */}
         <div className="h-1 w-full bg-green-100 rounded-full overflow-hidden">
           <div className="h-full bg-[#008751] transition-all duration-300" style={{ width: `${progress}%` }}></div>
         </div>
-        {duration > 0 && isFinite(duration) && (
-          <div className="flex justify-between mt-1 px-1">
-            <span className="text-[6px] font-bold text-green-700">{formatTime(currentTime)}</span>
-            <span className="text-[6px] font-bold text-green-700">{formatTime(duration)}</span>
-          </div>
-        )}
       </div>
 
-      <div className="flex flex-col items-center space-y-3 relative z-20 w-full px-12">
-        {/* Track Info Display */}
-        <div className="bg-[#008751]/10 px-4 py-2 rounded-full border border-green-200/50 w-full overflow-hidden shadow-inner flex items-center justify-center text-center">
-          <span className="text-[7px] font-black uppercase text-green-800 tracking-widest line-clamp-1">
-            {activeTrackUrl ? `NOW PLAYING: ${currentTrackName}` :
-              forcePlaying ? `SYNCING SIGNAL: ${currentTrackName}` :
-                'AWAITING ADMIN BROADCAST...'}
-          </span>
+      <div className="flex flex-col items-center space-y-3 relative z-20 w-full px-8">
+        {/* 🔥 PREMIUM RADIO DISPLAY */}
+        <div className="w-full bg-green-950/90 backdrop-blur-md rounded-2xl border-2 border-green-500/30 p-4 shadow-2xl relative overflow-hidden group">
+          {/* Signal Pulse Background */}
+          {isPlaying && (
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/10 rounded-full -mr-16 -mt-16 animate-ping pointer-events-none"></div>
+          )}
+
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex flex-col">
+              <div className="flex items-center space-x-2">
+                <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-red-500 animate-pulse' : 'bg-gray-600'}`}></span>
+                <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${isPlaying ? 'text-red-400' : 'text-gray-400'}`}>
+                  {isPlaying ? 'ON AIR' : 'OFF AIR'}
+                </span>
+              </div>
+              <span className="text-[6px] font-bold text-green-300/50 uppercase tracking-widest mt-1">98.5 MHZ | DIASPORA RELAY</span>
+            </div>
+            {status === 'LOADING' && <i className="fas fa-circle-notch fa-spin text-green-400 text-[10px]"></i>}
+          </div>
+
+          <div className="space-y-1">
+            <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
+              {activeTrackUrl ? currentTrackName : 'AWAITING SIGNAL...'}
+            </h4>
+            <div className="flex items-center space-x-2">
+              <span className="text-[7px] font-mono text-green-400/80">{formatTime(currentTime)}</span>
+              <div className="flex-grow h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-green-400 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+              </div>
+              <span className="text-[7px] font-mono text-green-400/80">{formatTime(duration)}</span>
+            </div>
+          </div>
         </div>
 
         {/* Error Message */}
         {errorMessage && (
-          <div className="bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 w-full">
-            <p className="text-[8px] font-semibold text-red-600 text-center">{errorMessage}</p>
+          <div className="bg-red-500/10 px-4 py-2 rounded-xl border border-red-500/20 w-full animate-bounce">
+            <p className="text-[8px] font-bold text-red-400 text-center uppercase tracking-wide">{errorMessage}</p>
           </div>
         )}
 
-        <button
-          onClick={handlePlayPause}
-          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all bg-white text-[#008751] border-4 border-[#008751]/10`}
-        // REMOVED DISABLED: User can always interrupt a stuck load
-        >
-          {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-xl"></i> :
-            status === 'ERROR' ? <i className="fas fa-redo-alt text-red-500"></i> :
-              isPlaying ? <i className="fas fa-pause text-2xl"></i> : <i className="fas fa-play text-2xl ml-1"></i>}
-        </button>
+        {/* Controls Grid */}
+        <div className="flex items-center justify-between w-full px-2 relative">
+          {/* JOIN BROADCAST OVERLAY (FOR LISTENERS) */}
+          {forcePlaying && !isPlaying && !errorMessage && status !== 'LOADING' && (
+            <div className="absolute inset-x-0 -top-16 flex justify-center z-50 animate-bounce">
+              <button
+                onClick={handlePlayPause}
+                className="bg-red-500 text-white px-6 py-3 rounded-full font-black text-[9px] uppercase tracking-widest shadow-2xl border-2 border-white/20 flex items-center space-x-2"
+              >
+                <i className="fas fa-satellite-dish"></i>
+                <span>Join Live Broadcast</span>
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handlePlayPause}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all ${isPlaying ? 'bg-red-500 text-white border-4 border-red-400/20' : 'bg-green-600 text-white border-4 border-green-500/20'
+                }`}
+            >
+              {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-lg"></i> :
+                isPlaying ? <i className="fas fa-pause text-xl"></i> : <i className="fas fa-play text-xl ml-1"></i>}
+            </button>
+
+            {/* Local Volume for Listeners */}
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-2">
+                <i className="fas fa-volume-up text-green-600 text-[8px]"></i>
+                <span className="text-[6px] font-black text-green-700 uppercase">{Math.round(volume * 100)}%</span>
+              </div>
+              <input
+                type="range" min="0" max="1" step="0.01" value={volume}
+                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                className="w-24 h-1 bg-green-100 rounded-lg appearance-none accent-green-600 cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* Sync Status Badge */}
+          <div className="flex flex-col items-end">
+            <span className="text-[6px] font-black text-green-900/40 uppercase tracking-tighter">Sync Engine V3.5</span>
+            <div className="flex items-center space-x-1 mt-1">
+              <div className="flex space-x-0.5">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className={`w-0.5 h-1.5 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} style={{ animationDelay: `${i * 0.1}s` }}></div>
+                ))}
+              </div>
+              <span className="text-[7px] font-black text-green-700 uppercase">Live Relay</span>
+            </div>
+          </div>
+        </div>
 
         {status === 'LOADING' && (
           <button
             onClick={() => window.location.reload()}
             className="text-[6px] font-black uppercase text-green-900/50 hover:text-green-950 underline underline-offset-2 animate-pulse"
           >
-            Stuck? Refresh App
+            Connection hanging? Refresh
           </button>
         )}
-
-        <div className="w-32 flex items-center space-x-2">
-          <i className="fas fa-volume-down text-green-600 text-[8px]"></i>
-          <input
-            type="range" min="0" max="1" step="0.01" value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="flex-grow h-0.5 bg-green-100 rounded-lg appearance-none accent-[#008751]"
-          />
-          <i className="fas fa-volume-up text-green-600 text-[8px]"></i>
-        </div>
       </div>
     </div>
   );

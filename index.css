@@ -1,12 +1,52 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
 @layer base {
+
+  :root,
+  :host {
+    --fa-style-family-classic: "Font Awesome 6 Free";
+    --fa-font-solid: normal 900 1em/1 "Font Awesome 6 Free";
+    --fa-font-regular: normal 400 1em/1 "Font Awesome 6 Free";
+    --fa-style-family-brands: "Font Awesome 6 Brands";
+    --fa-font-brands: normal 400 1em/1 "Font Awesome 6 Brands";
+  }
+
+  html,
+  :host {
+    -webkit-text-size-adjust: 100%;
+    -moz-tab-size: 4;
+    tab-size: 4;
+    line-height: 1.5;
+  }
+
   body {
-    @apply font-sans bg-[#f0fff4] text-[#008751] overflow-x-hidden;
+    font-family: var(--font-sans);
+    color: #008751;
+    background-color: #f0fff4;
+    overflow-x: hidden;
+  }
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop {
+    box-sizing: border-box;
+    border: 0 solid;
+    margin: 0;
+    padding: 0;
+  }
+
+  * {
+    color: inherit;
   }
 
   ::selection {
-    @apply bg-[#008751] text-white;
+    background-color: #008751;
+    color: white;
   }
 }
 
@@ -39,10 +79,6 @@
   animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-* {
-  color: inherit;
-}
-
 /* 🛡️ SUPPRESS PUTER TRUST BANNER (Fixes UI Blocking) */
 #puter-trust-banner,
 [id*="puter-trust-banner"],
@@ -57,7 +93,6 @@
   left: -9999px !important;
 }
 
-/* Prevent any Puter containers from catching clicks */
 iframe[src*="puter.com"] {
   pointer-events: none !important;
 }
