@@ -45,3 +45,17 @@ export async function generateText(prompt: string, systemInstruction: string) {
     return response.text || "";
   });
 }
+export async function checkApiKey() {
+  try {
+    const ai = getAIClient();
+    const result = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [{ role: 'user', parts: [{ text: "Hello. Just checking if you are online." }] }]
+    });
+    console.log("✅ API Health Check Success:", result.text);
+    return true;
+  } catch (error) {
+    console.error("❌ API Health Check Failed:", error);
+    return false;
+  }
+}

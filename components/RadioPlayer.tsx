@@ -12,6 +12,7 @@ interface RadioPlayerProps {
   onPeakReached?: () => void;
   isAdmin?: boolean;
   isDucking?: boolean;
+  duckingType?: 'news' | 'jingle' | null;
   onInteract?: () => void;
 }
 
@@ -23,6 +24,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   onTrackEnded,
   onPeakReached,
   isDucking = false,
+  duckingType = null,
   onInteract
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -262,17 +264,28 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     if (!audioRef.current) return;
 
     if (isDucking) {
-      // FULL STOP/PAUSE for clarity during broadcasts
-      if (isStreamRef.current) {
-        // For streams, we mute totally to prevent noise bleeding
+      if (duckingType === 'jingle') {
+        // JINGLE DUCKING: Reduce volume to 30% instead of full stop
         if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
-          gainNodeRef.current.gain.setTargetAtTime(0, audioContextRef.current.currentTime, 0.1);
+          gainNodeRef.current.gain.setTargetAtTime(volumeRef.current * 0.3, audioContextRef.current.currentTime, 0.4);
         } else {
-          audioRef.current.volume = 0;
+          audioRef.current.volume = volumeRef.current * 0.3;
+        }
+        // If it was playing, keep it playing (just quieter)
+        if (!isStreamRef.current && isPlaying && audioRef.current.paused) {
+          audioRef.current.play().catch(console.warn);
         }
       } else {
-        // For local files (playlist), we pause
-        audioRef.current.pause();
+        // BROADCAST/NEWS: FULL STOP/PAUSE for clarity
+        if (isStreamRef.current) {
+          if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
+            gainNodeRef.current.gain.setTargetAtTime(0, audioContextRef.current.currentTime, 0.1);
+          } else {
+            audioRef.current.volume = 0;
+          }
+        } else {
+          audioRef.current.pause();
+        }
       }
     } else {
       // RESUME / RESTORE VOLUME
@@ -287,7 +300,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         audioRef.current.play().catch(err => console.warn("Auto-resume failed:", err));
       }
     }
-  }, [isDucking, volume, isPlaying]);
+  }, [isDucking, duckingType, volume, isPlaying]);
 
   // Removed local statusRef here as it's now at top level
 
@@ -369,12 +382,12 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
         <button
           onClick={handlePlayPause}
-          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all ${status === 'ERROR' ? 'bg-red-500' : 'bg-[#008751]'} text-white border-4 border-white`}
+          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all bg-white text-[#008751] border-4 border-[#008751]/10`}
           disabled={status === 'LOADING'}
         >
-          {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin"></i> :
-            status === 'ERROR' ? <i className="fas fa-exclamation-triangle"></i> :
-              isPlaying ? <i className="fas fa-pause text-lg"></i> : <i className="fas fa-play text-lg ml-1"></i>}
+          {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-xl"></i> :
+            status === 'ERROR' ? <i className="fas fa-exclamation-triangle text-red-500"></i> :
+              isPlaying ? <i className="fas fa-pause text-2xl"></i> : <i className="fas fa-play text-2xl ml-1"></i>}
         </button>
 
         <div className="w-32 flex items-center space-x-2">

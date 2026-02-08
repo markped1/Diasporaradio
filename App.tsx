@@ -7,6 +7,7 @@ import RadioPlayer from './components/RadioPlayer';
 import { dbService } from './services/dbService';
 import { app as firebaseApp } from './services/firebaseConfig'; // Initialize Firebase
 import { scanNigerianNewspapers } from './services/newsAIService';
+import { checkApiKey } from './services/geminiService';
 import { getDetailedBulletinAudio, getNewsAudio, getJingleAudio, getDiscussionAudio } from './services/aiDjService';
 import { UserRole, MediaFile, AdminMessage, AdminLog, NewsItem, ListenerReport, MidwayState } from './types';
 import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2 } from './constants';
@@ -28,6 +29,7 @@ const App: React.FC = () => {
   const [currentTrackName, setCurrentTrackName] = useState<string>('Live Stream');
   const [isShuffle, setIsShuffle] = useState(true);
   const [isDucking, setIsDucking] = useState(false);
+  const [duckingType, setDuckingType] = useState<'news' | 'jingle' | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
 
@@ -121,6 +123,7 @@ const App: React.FC = () => {
         }
 
         setIsDucking(true);
+        setDuckingType(type);
         console.log(`Attempting to play ${type} audio, length: ${audioData.byteLength}`);
 
         let decodedBuffer: AudioBuffer;
@@ -149,12 +152,14 @@ const App: React.FC = () => {
         source.connect(ctx.destination);
         source.onended = () => {
           setIsDucking(false);
+          setDuckingType(null);
           resolve();
         };
         source.start();
       } catch (err) {
         console.error("AI Audio Playback Error:", err);
         setIsDucking(false);
+        setDuckingType(null);
         resolve();
       }
     });
@@ -263,6 +268,9 @@ const App: React.FC = () => {
           setActiveTrackId(null);
           setActiveTrackUrl(null);
           setCurrentTrackName('Live Stream');
+        } else if (remoteState.activeTrackName) {
+          // Fallback: Use the name from remote state if we don't have the track in local list
+          setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
         }
       }
 
@@ -295,7 +303,10 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchData();
     // Silent initial sync
-    const syncTimeout = setTimeout(() => scanNigerianNewspapers(currentLocation).then(() => fetchData()), 3000);
+    const syncTimeout = setTimeout(() => {
+      scanNigerianNewspapers(currentLocation).then(() => fetchData());
+      checkApiKey(); // Perform API health check diagnostic
+    }, 3000);
 
     const interactionHandler = () => {
       setHasInteracted(true);
@@ -518,6 +529,7 @@ const App: React.FC = () => {
           onTrackEnded={handlePlayNext}
           onPeakReached={handlePeakReached}
           isDucking={isDucking}
+          duckingType={duckingType}
           onInteract={() => setHasInteracted(true)}
         />
 
