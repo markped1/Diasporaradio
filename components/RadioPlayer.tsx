@@ -243,6 +243,11 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   useEffect(() => {
     if (audioRef.current) {
       if (forcePlaying && audioRef.current.paused) {
+        if (!activeTrackUrl) {
+          console.warn("Force playing requested but no URL - Resetting to IDLE");
+          setStatus('IDLE');
+          return;
+        }
         // Only init audio context for local files
         if (!isStreamRef.current) {
           initAudioContext();
@@ -255,6 +260,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         });
       } else if (!forcePlaying && !audioRef.current.paused) {
         audioRef.current.pause();
+        setStatus('IDLE');
       }
     }
   }, [forcePlaying]);

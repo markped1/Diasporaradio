@@ -113,9 +113,23 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         <div className="absolute top-0 right-0 w-16 h-16 bg-green-50/50 rounded-full -mr-8 -mt-8"></div>
       </div>
 
-      {/* NEWS SECTIONS REMOVED AS REQUESTED */}
-
-      {/* NEWS HIGHLIGHTS REMOVED */}
+      {/* 2. NEWS TICKER (RESTORED) */}
+      <div className="bg-green-50/80 text-green-950 py-2.5 overflow-hidden relative shadow-inner border-y border-green-100 mx-[-6px] mb-2">
+        <div className="flex whitespace-nowrap animate-marquee">
+          {[...news, ...news].map((item, idx) => (
+            <span key={idx} className="mx-8 text-[9px] font-black uppercase tracking-widest flex items-center">
+              <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+              {item.category}: {item.title}
+            </span>
+          ))}
+          {news.length === 0 && (
+            <span className="mx-8 text-[9px] font-black uppercase tracking-widest flex items-center">
+              <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+              {CHANNEL_INTRO}
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* 3. SPONSORED HIGHLIGHTS */}
       <section className="space-y-1">
