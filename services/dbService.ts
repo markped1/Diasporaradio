@@ -25,31 +25,38 @@ class DBService {
   }
 
   async getMidwayState(): Promise<MidwayState | null> {
-    try {
-      this.checkConfig();
-      const { data, error } = await supabase
-        .from('midway_state')
-        .select('*')
-        .eq('id', 'global')
-        .single();
+    this.checkConfig();
+    const { data, error } = await supabase
+      .from('midway_state')
+      .select('*')
+      .eq('id', 'global')
+      .single();
 
-      if (data && !error) return data;
-    } catch (e) {
-      console.warn("Supabase fetch failed, falling back to local:", e);
+    if (error) {
+      console.error("Supabase getMidwayState failed:", error);
+      throw new Error(`Database Error: ${error.message} (${error.code || 'Unauthorized'})`);
     }
 
-    const data = localStorage.getItem(this.STORAGE_KEYS.MIDWAY);
-    return data ? JSON.parse(data) : null;
+    if (data) {
+      localStorage.setItem(this.STORAGE_KEYS.MIDWAY, JSON.stringify(data));
+      return data;
+    }
+
+    const localData = localStorage.getItem(this.STORAGE_KEYS.MIDWAY);
+    return localData ? JSON.parse(localData) : null;
   }
 
   async setMidwayState(state: MidwayState): Promise<void> {
-    try {
-      await supabase
-        .from('midway_state')
-        .upsert({ id: 'global', ...state });
-    } catch (e) {
-      console.warn("Supabase upsert failed, saving locally:", e);
+    this.checkConfig();
+    const { error } = await supabase
+      .from('midway_state')
+      .upsert({ id: 'global', ...state });
+
+    if (error) {
+      console.error("Supabase setMidwayState failed:", error);
+      throw new Error(`Cloud Sync Error: ${error.message}`);
     }
+
     localStorage.setItem(this.STORAGE_KEYS.MIDWAY, JSON.stringify(state));
   }
 

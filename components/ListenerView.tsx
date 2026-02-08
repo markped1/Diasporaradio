@@ -17,8 +17,8 @@ interface ListenerViewProps {
   onPlayTrack: (track: MediaFile) => void;
 }
 
-const ListenerView: React.FC<ListenerViewProps> = ({ 
-  news, 
+const ListenerView: React.FC<ListenerViewProps> = ({
+  news,
   sponsoredVideos,
   reports,
   adminMessages = []
@@ -29,7 +29,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   const [isReporting, setIsReporting] = useState(false);
   const [adIndex, setAdIndex] = useState(0);
   const [shareFeedback, setShareFeedback] = useState('');
-  
+
   const timerRef = useRef<number | null>(null);
 
   const nextAd = useCallback(() => {
@@ -60,7 +60,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
 
   const handleShare = async () => {
     const text = "📻 Tune in to Nigeria Diaspora Radio (NDR)! The voice of Nigerians abroad. Live news and culture. Listen here: ";
-    const url = window.location.href.split('?')[0]; 
+    const url = window.location.href.split('?')[0];
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Nigeria Diaspora Radio', text, url });
@@ -79,14 +79,14 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   const handleReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportText.trim()) return;
-    await dbService.addReport({ 
-      id: Math.random().toString(36).substring(2, 9), 
-      reporterName: 'Listener', 
-      location, 
-      content: reportText, 
-      timestamp: Date.now() 
+    await dbService.addReport({
+      id: Math.random().toString(36).substring(2, 9),
+      reporterName: 'Listener',
+      location,
+      content: reportText,
+      timestamp: Date.now()
     });
-    setReportText(''); 
+    setReportText('');
     setIsReporting(false);
     setShareFeedback('Report Sent!');
     setTimeout(() => setShareFeedback(''), 3000);
@@ -102,9 +102,9 @@ const ListenerView: React.FC<ListenerViewProps> = ({
           <span className="text-[6px] font-black uppercase tracking-widest text-green-600">{location}</span>
           <span className="text-[6px] font-mono text-green-900 font-black">{localTime}</span>
         </div>
-        
-        <button 
-          onClick={handleShare} 
+
+        <button
+          onClick={handleShare}
           className="relative z-10 bg-[#008751] hover:bg-green-700 text-white px-4 py-1.5 rounded-full text-[7px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all flex items-center space-x-2"
         >
           <i className="fas fa-paper-plane"></i>
@@ -119,14 +119,14 @@ const ListenerView: React.FC<ListenerViewProps> = ({
           <span className="text-[8px] font-black text-[#008751] uppercase px-8 tracking-widest inline-block">{CHANNEL_INTRO}</span>
           {adminMessages.map((msg, i) => (
             <span key={`admin-${i}`} className="text-[8px] text-red-600 font-black uppercase px-8 flex items-center inline-block">
-               <i className="fas fa-bullhorn mr-2 animate-bounce"></i> {msg.text}
-               <span className="ml-8 text-green-300">|</span>
+              <i className="fas fa-bullhorn mr-2 animate-bounce"></i> {msg.text}
+              <span className="ml-8 text-green-300">|</span>
             </span>
           ))}
           {news.map((n, i) => (
             <span key={`ticker-${i}`} className="text-[8px] text-green-800 font-bold uppercase px-8 flex items-center inline-block">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2 shrink-0 animate-pulse"></span>
-              <span className="text-[#008751] font-black mr-2">BREAKING:</span> 
+              <span className="text-[#008751] font-black mr-2">BREAKING:</span>
               {n.title}
               <span className="ml-8 text-green-300">|</span>
             </span>
@@ -176,23 +176,23 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       {/* 5. LIVE COMMUNITY REPORTS */}
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">
-           <h3 className="text-[7px] font-black uppercase text-green-600/40 tracking-[0.2em]">Live Community Reports</h3>
-           <span className="text-[6px] font-black text-red-500 flex items-center">
-             <span className="w-1 h-1 bg-red-500 rounded-full mr-1 animate-ping"></span> ON-AIR FEED
-           </span>
+          <h3 className="text-[7px] font-black uppercase text-green-600/40 tracking-[0.2em]">Live Community Reports</h3>
+          <span className="text-[6px] font-black text-red-500 flex items-center">
+            <span className="w-1 h-1 bg-red-500 rounded-full mr-1 animate-ping"></span> ON-AIR FEED
+          </span>
         </div>
         <div className="bg-white/60 border border-green-50 rounded-2xl p-3 max-h-[150px] overflow-y-auto no-scrollbar shadow-inner">
           {reports.length > 0 ? (
             <div className="space-y-3">
               {reports.slice(0, 10).map((r) => (
                 <div key={r.id} className="bg-white p-2.5 rounded-xl border border-green-50 shadow-sm animate-scale-in">
-                   <div className="flex justify-between items-center mb-1">
-                      <span className="text-[7px] font-black text-green-800 uppercase flex items-center">
-                        <i className="fas fa-map-marker-alt mr-1 text-red-500"></i> {r.location}
-                      </span>
-                      <span className="text-[6px] text-gray-400 font-mono">{new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                   </div>
-                   <p className="text-[9px] text-green-950 leading-relaxed font-medium">"{r.content}"</p>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[7px] font-black text-green-800 uppercase flex items-center">
+                      <i className="fas fa-map-marker-alt mr-1 text-red-500"></i> {r.location}
+                    </span>
+                    <span className="text-[6px] text-gray-400 font-mono">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <p className="text-[9px] text-green-950 leading-relaxed font-medium">"{r.content}"</p>
                 </div>
               ))}
             </div>
@@ -210,19 +210,19 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         <h3 className="text-[7px] font-black uppercase text-green-600/40 tracking-[0.2em] px-1">Journalist HQ</h3>
         <div className="p-3 rounded-2xl border border-dashed border-green-200 bg-white/60 shadow-sm">
           {!isReporting ? (
-            <button 
-              onClick={() => setIsReporting(true)} 
+            <button
+              onClick={() => setIsReporting(true)}
               className="w-full py-2.5 text-[7px] font-black text-[#008751] uppercase tracking-widest flex items-center justify-center bg-white rounded-xl border border-green-50 shadow-sm active:scale-95 transition-all"
             >
               <i className="fas fa-microphone-alt mr-2 text-red-500"></i> Report Happenings in your City
             </button>
           ) : (
             <form onSubmit={handleReport} className="space-y-2 animate-scale-in">
-              <textarea 
-                value={reportText} 
-                onChange={(e) => setReportText(e.target.value)} 
-                placeholder="Briefly describe what's happening near you..." 
-                className="w-full bg-green-50 border border-green-100 rounded-xl p-3 text-[9px] h-20 outline-none focus:border-green-400 font-medium resize-none shadow-inner" 
+              <textarea
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+                placeholder="Briefly describe what's happening near you..."
+                className="w-full bg-green-50 border border-green-100 rounded-xl p-3 text-[9px] h-20 outline-none focus:border-green-400 font-medium resize-none shadow-inner"
               />
               <div className="flex space-x-2">
                 <button type="submit" className="flex-1 bg-[#008751] text-white py-2.5 rounded-xl font-black text-[7px] uppercase tracking-widest shadow-md active:scale-95 transition-all">
@@ -240,15 +240,16 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       {/* Footer (Text color dark green, size +15%) */}
       <footer className="mt-8 pt-6 border-t border-green-100 text-center space-y-1 pb-6">
         <div className="flex items-center justify-center space-x-4 mb-4">
-           <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-facebook-f text-[12px] text-green-950"></i></div>
-           <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-twitter text-[12px] text-green-950"></i></div>
-           <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-whatsapp text-[12px] text-green-950"></i></div>
+          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-facebook-f text-[12px] text-green-950"></i></div>
+          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-twitter text-[12px] text-green-950"></i></div>
+          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors cursor-pointer"><i className="fab fa-whatsapp text-[12px] text-green-950"></i></div>
         </div>
         <p className="text-[8.5px] font-black uppercase tracking-[0.2em] text-green-950">{APP_NAME}</p>
         <p className="text-[7.5px] text-green-950/50 uppercase tracking-[0.4em]">Designed by {DESIGNER_NAME} &bull; v2.4.0</p>
       </footer>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .animate-marquee { display: inline-flex; animation: marquee 50s linear infinite; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
