@@ -113,23 +113,6 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         <div className="absolute top-0 right-0 w-16 h-16 bg-green-50/50 rounded-full -mr-8 -mt-8"></div>
       </div>
 
-      {/* 2. NEWS TICKER (RESTORED) */}
-      <div className="bg-green-50/80 text-green-950 py-2.5 overflow-hidden relative shadow-inner border-y border-green-100 mx-[-6px] mb-2">
-        <div className="flex whitespace-nowrap animate-marquee">
-          {[...news, ...news].map((item, idx) => (
-            <span key={idx} className="mx-8 text-[9px] font-black uppercase tracking-widest flex items-center">
-              <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
-              {item.category}: {item.title}
-            </span>
-          ))}
-          {news.length === 0 && (
-            <span className="mx-8 text-[9px] font-black uppercase tracking-widest flex items-center">
-              <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
-              {CHANNEL_INTRO}
-            </span>
-          )}
-        </div>
-      </div>
 
       {/* 3. SPONSORED HIGHLIGHTS */}
       <section className="space-y-1">
@@ -232,6 +215,32 @@ const ListenerView: React.FC<ListenerViewProps> = ({
           )}
         </div>
       </section>
+
+      {/* 7. NEWS TICKER (BOTTOM PLACEMENT) */}
+      <div className="mt-4 bg-white/80 backdrop-blur-sm text-green-950 py-3 overflow-hidden relative shadow-inner border-y border-green-100 mx-[-6px] z-30">
+        <div className="flex whitespace-nowrap animate-marquee">
+          {/* Multiply items to ensure enough width for smooth scrolling */}
+          {[...news, ...news, ...news, ...news].map((item, idx) => (
+            <span key={idx} className="mx-12 text-[10px] font-black uppercase tracking-[0.15em] flex items-center">
+              <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+              <span className="text-green-600 mr-2">[{item.category}]</span>
+              {item.title}
+            </span>
+          ))}
+          {news.length === 0 && (
+            <>
+              <span className="mx-12 text-[10px] font-black uppercase tracking-[0.15em] flex items-center">
+                <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+                {CHANNEL_INTRO}
+              </span>
+              <span className="mx-12 text-[10px] font-black uppercase tracking-[0.15em] flex items-center">
+                <span className="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+                {CHANNEL_INTRO}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Footer (Text color dark green, size +15%) */}
       <footer className="mt-8 pt-6 border-t border-green-100 text-center space-y-1 pb-6">

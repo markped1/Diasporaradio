@@ -299,6 +299,14 @@ const App: React.FC = () => {
           });
         }
       }
+
+      // 5. HYBRID SYNC: Force re-sync on pulse
+      if (remoteState.broadcastPulse && remoteState.broadcastPulse > (isSyncingRef.current ? 0 : 0)) {
+        console.log("Broadcast Pulse Received - Ensuring sync...");
+        if (remoteState.isPlaying && !isRadioPlayingRef.current) {
+          setIsRadioPlaying(true);
+        }
+      }
     };
 
     // Initial fetch to get the current state
@@ -597,7 +605,9 @@ const App: React.FC = () => {
                 activeTrackId: current?.activeTrackId || null,
                 activeTrackName: current?.activeTrackName || 'Live Stream',
                 isPlaying: newState,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                broadcastPulse: Date.now(), // Pulse on toggle
+                lastEvent: { type: newState ? 'PLAY' : 'STOP', timestamp: Date.now() }
               });
             }}
             currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}

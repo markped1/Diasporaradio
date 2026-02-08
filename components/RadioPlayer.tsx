@@ -266,6 +266,20 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   }, [forcePlaying]);
 
   useEffect(() => {
+    let watchDog: number;
+    if (status === 'LOADING') {
+      watchDog = window.setTimeout(() => {
+        if (statusRef.current === 'LOADING') {
+          console.warn("Loading watchdog triggered - Resetting player");
+          setStatus('IDLE');
+          setErrorMessage('Finding signal... Tap Play to retry');
+        }
+      }, 10000); // 10s timeout
+    }
+    return () => clearTimeout(watchDog);
+  }, [status]);
+
+  useEffect(() => {
     if (!audioRef.current) return;
 
     if (isDucking) {

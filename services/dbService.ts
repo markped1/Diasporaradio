@@ -352,6 +352,21 @@ class DBService {
         text,
         type,
         timestamp: Date.now()
+      },
+      broadcastPulse: Date.now() // Force event trigger
+    };
+    await this.setMidwayState(updatedState);
+  }
+
+  async sendPulse(type: 'PLAY' | 'STOP' | 'SYNC'): Promise<void> {
+    this.checkConfig();
+    const state = await this.getMidwayState();
+    const updatedState: MidwayState = {
+      ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+      broadcastPulse: Date.now(),
+      lastEvent: {
+        type,
+        timestamp: Date.now()
       }
     };
     await this.setMidwayState(updatedState);

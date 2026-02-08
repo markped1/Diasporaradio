@@ -75,4 +75,9 @@ export interface MidwayState {
     type: 'news' | 'jingle' | 'discussion';
     timestamp: number;
   };
+  broadcastPulse?: number; // Heartbeat/Trigger for sync
+  lastEvent?: {
+    type: 'PLAY' | 'STOP' | 'SYNC';
+    timestamp: number;
+  };
 }
