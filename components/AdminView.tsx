@@ -57,6 +57,7 @@ const AdminView: React.FC<AdminViewProps> = ({
   const [apiHealth, setApiHealth] = useState<'IDLE' | 'CHECKING' | 'HEALTHY' | 'ERROR'>('IDLE');
   const [cloudMode, setCloudMode] = useState(true); // Default to global broadcast
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [playbackPreferences, setPlaybackPreferences] = useState<Record<string, 'cloud' | 'local'>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -167,6 +168,22 @@ const AdminView: React.FC<AdminViewProps> = ({
       setUploadProgress(0);
       setTimeout(() => setStatusMsg(''), 5000);
       if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleSyncToLocal = async (id: string) => {
+    setIsProcessing(true);
+    setStatusMsg("Syncing to local storage...");
+    try {
+      await dbService.syncToLocal(id);
+      setStatusMsg("Sync successful!");
+      onRefreshData();
+      await loadData();
+    } catch (err: any) {
+      setStatusMsg(`Sync Failed: ${err.message}`);
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setStatusMsg(''), 3000);
     }
   };
 
@@ -579,31 +596,81 @@ const AdminView: React.FC<AdminViewProps> = ({
                 </div>
 
                 <div className="grid gap-2">
-                  {filteredMedia.filter(m => m.folder === currentFolder || (!m.folder && currentFolder === 'Uncategorized')).map(item => (
-                    <div key={item.id} className="bg-white p-3 rounded-xl border border-green-50 flex items-center justify-between shadow-sm animate-scale-in">
-                      <div className="flex items-center space-x-3 truncate pr-4">
-                        <i className={`fas ${item.type === 'audio' ? 'fa-music' : 'fa-film'} text-xs text-green-600`}></i>
-                        <div className="flex flex-col truncate">
-                          <p className="text-[9px] font-bold text-green-950 truncate">{item.name}</p>
-                          <div className="flex items-center space-x-1">
-                            {item.url ? (
-                              <span className="text-[6px] font-black uppercase text-blue-500 flex items-center">
-                                <i className="fas fa-cloud mr-1"></i> Cloud Synced
-                              </span>
-                            ) : (
-                              <span className="text-[6px] font-black uppercase text-amber-500 flex items-center">
-                                <i className="fas fa-microchip mr-1"></i> Local Only
-                              </span>
-                            )}
+                  {filteredMedia.filter(m => m.folder === currentFolder || (!m.folder && currentFolder === 'Uncategorized')).map(item => {
+                    const hasLocal = !!item.file;
+                    const hasCloud = !!item.url;
+                    const pref = playbackPreferences[item.id] || (hasLocal ? 'local' : 'cloud');
+
+                    return (
+                      <div key={item.id} className="bg-white p-3 rounded-xl border border-green-50 flex items-center justify-between shadow-sm animate-scale-in">
+                        <div className="flex items-center space-x-3 truncate pr-4">
+                          <i className={`fas ${item.type === 'audio' ? 'fa-music' : 'fa-film'} text-xs text-green-600`}></i>
+                          <div className="flex flex-col truncate">
+                            <p className="text-[9px] font-bold text-green-950 truncate">{item.name}</p>
+                            <div className="flex items-center space-x-2">
+                              {hasCloud && (
+                                <span className={`text-[6px] font-black uppercase flex items-center ${pref === 'cloud' ? 'text-blue-500' : 'text-gray-400'}`}>
+                                  <i className="fas fa-cloud mr-1"></i> Cloud
+                                </span>
+                              )}
+                              {hasLocal && (
+                                <span className={`text-[6px] font-black uppercase flex items-center ${pref === 'local' ? 'text-orange-500' : 'text-gray-400'}`}>
+                                  <i className="fas fa-hdd mr-1"></i> Local
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
+
+                        <div className="flex items-center space-x-1">
+                          {/* Sync / Source Toggle */}
+                          {hasCloud && !hasLocal && (
+                            <button
+                              onClick={() => handleSyncToLocal(item.id)}
+                              className="w-7 h-7 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"
+                              title="Sync to Local Storage"
+                            >
+                              <i className="fas fa-cloud-download-alt text-[8px]"></i>
+                            </button>
+                          )}
+
+                          {hasCloud && hasLocal && (
+                            <button
+                              onClick={() => setPlaybackPreferences(prev => ({
+                                ...prev,
+                                [item.id]: pref === 'cloud' ? 'local' : 'cloud'
+                              }))}
+                              className="w-12 h-6 bg-gray-100 rounded-full p-1 flex items-center transition-all relative"
+                              title={`Currently Playing from ${pref === 'cloud' ? 'Cloud' : 'Local'}`}
+                            >
+                              <div className={`w-4 h-4 rounded-full shadow-sm flex items-center justify-center text-[6px] transition-all ${pref === 'cloud' ? 'translate-x-6 bg-blue-500 text-white' : 'bg-orange-500 text-white'}`}>
+                                <i className={`fas ${pref === 'cloud' ? 'fa-cloud' : 'fa-hdd'}`}></i>
+                              </div>
+                              <span className={`absolute ${pref === 'cloud' ? 'left-2' : 'right-2'} text-[5px] font-black text-gray-400 uppercase`}>
+                                {pref === 'cloud' ? 'CLD' : 'LOC'}
+                              </span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              // Force play logic to use selected source
+                              const playItem = { ...item };
+                              if (pref === 'local' && item.file) {
+                                playItem.url = URL.createObjectURL(item.file);
+                              }
+                              onPlayTrack(playItem);
+                            }}
+                            className="w-7 h-7 bg-green-50 text-green-600 rounded-full flex items-center justify-center font-black active:scale-95"
+                          >
+                            <i className="fas fa-play text-[8px]"></i>
+                          </button>
+
+                          <button onClick={() => dbService.deleteMedia(item.id).then(loadData)} className="w-7 h-7 bg-red-50 text-red-500 rounded-full flex items-center justify-center active:scale-95"><i className="fas fa-trash-alt text-[8px]"></i></button>
+                        </div>
                       </div>
-                      <div className="flex space-x-1">
-                        <button onClick={() => onPlayTrack(item)} className="w-7 h-7 bg-green-50 text-green-600 rounded-full flex items-center justify-center"><i className="fas fa-play text-[8px]"></i></button>
-                        <button onClick={() => dbService.deleteMedia(item.id).then(loadData)} className="w-7 h-7 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><i className="fas fa-trash-alt text-[8px]"></i></button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {filteredMedia.filter(m => m.folder === currentFolder || (!m.folder && currentFolder === 'Uncategorized')).length === 0 && (
                     <div className="py-10 text-center opacity-40">
                       <i className="fas fa-inbox text-3xl mb-2"></i>

@@ -656,7 +656,7 @@ const App: React.FC = () => {
           <AdminView
             onRefreshData={fetchData} logs={logs}
             onPlayTrack={async (t) => {
-              // IMMEDIATE FEEDBACK for Admin
+              // IMMEDIATE FEEDBACK for Admin (Uses their preferred local/cloud URL)
               setActiveTrackId(t.id);
               setActiveTrackUrl(t.url);
               setCurrentTrackName(cleanTrackName(t.name));
@@ -664,11 +664,14 @@ const App: React.FC = () => {
               setHasInteracted(true);
 
               const isLocalBlob = t.url.startsWith('blob:') || t.url.startsWith('data:');
+              // Ensure we broadcast the CLOUD URL if available, even if playing locally
+              const trackInfo = playlistRef.current.find(m => m.id === t.id);
+              const broadcastUrl = trackInfo?.url || (isLocalBlob ? null : t.url);
 
               await dbService.updateMidwayState({
                 activeTrackId: t.id,
                 activeTrackName: cleanTrackName(t.name),
-                activeTrackUrl: isLocalBlob ? null : t.url, // Only sync true cloud URLs
+                activeTrackUrl: broadcastUrl,
                 isPlaying: true,
                 broadcastPulse: Date.now()
               });

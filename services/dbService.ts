@@ -279,6 +279,39 @@ class DBService {
     return localFiles.sort((a, b) => b.timestamp - a.timestamp);
   }
 
+  async syncToLocal(id: string): Promise<void> {
+    const db = await this.getDB();
+
+    // 1. Get current metadata from cloud or local
+    const media = await this.getMedia();
+    const item = media.find(m => m.id === id);
+    if (!item || !item.url) throw new Error("Item not found or has no cloud URL");
+
+    try {
+      // 2. Fetch the file blob
+      const resp = await fetch(item.url);
+      if (!resp.ok) throw new Error("Failed to fetch cloud file");
+      const blob = await resp.blob();
+
+      // 3. Save to Local IndexedDB
+      await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction(MEDIA_STORE, 'readwrite');
+        const store = transaction.objectStore(MEDIA_STORE);
+        const updateRequest = store.put({
+          ...item,
+          file: blob
+        });
+        updateRequest.onsuccess = () => resolve();
+        updateRequest.onerror = () => reject(updateRequest.error);
+      });
+
+      console.log(`Successfully synced ${item.name} to local storage.`);
+    } catch (e) {
+      console.error("Sync to local failed:", e);
+      throw e;
+    }
+  }
+
   async deleteMedia(id: string): Promise<void> {
     const db = await this.getDB();
     await new Promise<void>((resolve, reject) => {

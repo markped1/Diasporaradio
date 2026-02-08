@@ -191,11 +191,11 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     if (targetSrc) {
       isStreamRef.current = !targetSrc.startsWith('blob:') && !targetSrc.startsWith('data:');
 
-      // CRITICAL FIX: Don't set crossOrigin for live streams
+      // Use 'anonymous' for cloud URLs to allow Web Audio API processing
       if (targetSrc.startsWith('blob:') || targetSrc.startsWith('data:')) {
         audio.crossOrigin = null;
       } else {
-        audio.removeAttribute('crossorigin');
+        audio.crossOrigin = 'anonymous';
       }
 
       audio.src = targetSrc;
@@ -217,11 +217,11 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         const isLocal = targetSrc.startsWith('blob:') || targetSrc.startsWith('data:');
         isStreamRef.current = !isLocal;
 
-        // CRITICAL FIX: Handle crossOrigin properly
+        // Use 'anonymous' for cloud URLs to allow Web Audio API processing
         if (isLocal) {
           audioRef.current.crossOrigin = null;
         } else {
-          audioRef.current.removeAttribute('crossorigin');
+          audioRef.current.crossOrigin = 'anonymous';
         }
 
         audioRef.current.src = targetSrc;
