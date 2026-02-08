@@ -38,7 +38,7 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
       - 'weather': Object with 'condition', 'temp', 'location'.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash", // UPDATED: Consistent model name
+        model: "gemini-1.5-flash", // REVERTED: Better stability for search tools
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -97,8 +97,11 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
       };
     } catch (error: any) {
       console.error("❌ Advanced News/Weather scanning failed:", error);
+      const isToolError = error?.message?.includes('search') || error?.message?.includes('tool');
+      if (isToolError) {
+        console.error("⚠️ Problem might be with the 'googleSearch' tool availability or quota.");
+      }
       if (error?.message) console.error("Error Message:", error.message);
-      if (error?.code) console.error("Error Code:", error.code);
       return { news: existingNews };
     }
   });

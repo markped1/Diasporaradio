@@ -244,7 +244,7 @@ class DBService {
       .channel('midway_changes')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'midway_state', filter: 'id=eq.global' },
+        { event: '*', schema: 'public', table: 'midway_state', filter: 'id=eq.global' },
         (payload) => {
           if (payload.new) onUpdate(payload.new as MidwayState);
         }
