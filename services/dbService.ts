@@ -213,6 +213,10 @@ class DBService {
   }
 
   subscribeToMidway(onUpdate: (state: MidwayState) => void) {
+    if (!supabase) {
+      console.warn("Supabase not configured. Realtime subscription skipped.");
+      return { unsubscribe: () => { } };
+    }
     return supabase
       .channel('midway_changes')
       .on(
@@ -227,8 +231,13 @@ class DBService {
 
   async getDiscussionQueue(): Promise<string[]> {
     try {
-      const { data } = await supabase.from('midway_state').select('discussion_queue').eq('id', 'global').single();
-      if (data?.discussion_queue) return data.discussion_queue;
+      if (supabase) {
+        const { data } = await supabase.from('midway_state').select('discussion_queue').eq('id', 'global').single();
+        if (data?.discussion_queue) {
+          localStorage.setItem(this.STORAGE_KEYS.DISCUSSION_QUEUE, JSON.stringify(data.discussion_queue));
+          return data.discussion_queue;
+        }
+      }
     } catch (e) {
       console.warn("Queue fetch failed:", e);
     }
@@ -241,7 +250,9 @@ class DBService {
     if (current.length >= 10) return;
     const updated = [...current, text];
     try {
-      await supabase.from('midway_state').upsert({ id: 'global', discussion_queue: updated });
+      if (supabase) {
+        await supabase.from('midway_state').upsert({ id: 'global', discussion_queue: updated });
+      }
     } catch (e) {
       console.warn("Queue add failed:", e);
     }
@@ -254,7 +265,9 @@ class DBService {
     const discussion = current[0];
     const remaining = current.slice(1);
     try {
-      await supabase.from('midway_state').upsert({ id: 'global', discussion_queue: remaining });
+      if (supabase) {
+        await supabase.from('midway_state').upsert({ id: 'global', discussion_queue: remaining });
+      }
     } catch (e) {
       console.warn("Queue pop failed:", e);
     }
@@ -266,7 +279,9 @@ class DBService {
     const current = await this.getDiscussionQueue();
     const updated = current.filter((_, i) => i !== index);
     try {
-      await supabase.from('midway_state').upsert({ id: 'global', discussion_queue: updated });
+      if (supabase) {
+        await supabase.from('midway_state').upsert({ id: 'global', discussion_queue: updated });
+      }
     } catch (e) {
       console.warn("Queue remove failed:", e);
     }
