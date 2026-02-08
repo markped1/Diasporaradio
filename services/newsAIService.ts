@@ -97,10 +97,26 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
       };
     } catch (error: any) {
       console.error("❌ Advanced News/Weather scanning failed:", error);
-      const isToolError = error?.message?.includes('search') || error?.message?.includes('tool');
+      const isToolError = error?.message?.includes('search') || error?.message?.includes('tool') || error?.message?.includes('permission');
+
       if (isToolError) {
-        console.error("⚠️ Problem might be with the 'googleSearch' tool availability or quota.");
+        console.warn("⚠️ Google Search tool is restricted. Falling back to General Knowledge News...");
+        try {
+          const fallbackAi = getAIClient();
+          const fallbackResponse = await fallbackAi.models.generateContent({
+            model: "gemini-1.5-flash",
+            contents: `Generate a list of 5 currently relevant news headlines for Nigeria (Politics, Business, Entertainment). 
+            Return ONLY a valid JSON array of objects with 'headline', 'category', and 'summary' fields.`,
+          });
+          const text = fallbackResponse.text;
+          const cleanedText = text.replace(/```json|```/g, "").trim();
+          const fallbackNews = JSON.parse(cleanedText);
+          return { news: fallbackNews };
+        } catch (fallbackError) {
+          console.error("❌ Fallback news generation also failed:", fallbackError);
+        }
       }
+
       if (error?.message) console.error("Error Message:", error.message);
       return { news: existingNews };
     }
