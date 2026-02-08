@@ -38,7 +38,7 @@ const App: React.FC = () => {
   const pendingAudioRef = useRef<Uint8Array | null>(null);
   const lastBroadcastMarkerRef = useRef<string>("");
   const lastBroadcastIdRef = useRef<string>("");
-
+  const lastProcessedPulseRef = useRef<number>(0);
   const mediaUrlCache = useRef<Map<string, string>>(new Map());
   const playlistRef = useRef<MediaFile[]>([]);
 
@@ -301,18 +301,25 @@ const App: React.FC = () => {
       }
 
       // 5. HYBRID SYNC: Force re-sync on pulse
-      if (remoteState.broadcastPulse && remoteState.broadcastPulse > (isSyncingRef.current ? 0 : 0)) {
-        console.log("Broadcast Pulse Received - Ensuring sync...");
+      if (remoteState.broadcastPulse && remoteState.broadcastPulse > lastProcessedPulseRef.current) {
+        lastProcessedPulseRef.current = remoteState.broadcastPulse;
+        console.log("New Broadcast Pulse Received - Ensuring sync...");
         if (remoteState.isPlaying && !isRadioPlayingRef.current) {
           setIsRadioPlaying(true);
+        } else if (!remoteState.isPlaying && isRadioPlayingRef.current) {
+          setIsRadioPlaying(false);
         }
       }
     };
 
     // Initial fetch to get the current state
-    dbService.getMidwayState().then(remoteState => {
-      if (remoteState) handleSyncUpdate(remoteState);
-    });
+    dbService.getMidwayState()
+      .then(remoteState => {
+        if (remoteState) handleSyncUpdate(remoteState);
+      })
+      .catch(err => {
+        console.warn("Initial Midway sync failed - relying on Realtime:", err);
+      });
 
     const subscription = dbService.subscribeToMidway(handleSyncUpdate);
 

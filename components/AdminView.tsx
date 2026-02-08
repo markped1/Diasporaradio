@@ -102,7 +102,11 @@ const AdminView: React.FC<AdminViewProps> = ({
     setIsProcessing(true);
     let count = 0;
     try {
-      const isCloud = window.confirm("Do you want to upload these files to the CLOUD for global listeners? \n\n(Requires a public 'media' bucket in Supabase. Cancel to keep them local-only.)");
+      const isCloud = window.confirm(
+        "🚀 BROADCAST TO GLOBAL LISTENERS? \n\n" +
+        "Click OK to upload to CLOUD so everyone worldwide can hear this music. \n" +
+        "Click Cancel if you only want to listen locally on this device."
+      );
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
