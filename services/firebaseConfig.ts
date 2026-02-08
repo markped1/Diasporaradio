@@ -11,8 +11,19 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig);
+// Initialize Firebase only if the API key is present to avoid top-level crashes
+const isFirebaseReady = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined";
 
-// Initialize Analytics (optional, with safe check for browser environment)
-export const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
+export const app = isFirebaseReady ? initializeApp(firebaseConfig) : null;
+
+// Initialize Analytics (optional, with safe check for browser environment and successful initialization)
+export const analytics = (typeof window !== "undefined" && app) ? (
+    (() => {
+        try {
+            return getAnalytics(app);
+        } catch (e) {
+            console.warn("Firebase Analytics failed to initialize:", e);
+            return null;
+        }
+    })()
+) : null;

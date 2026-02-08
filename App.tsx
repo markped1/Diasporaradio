@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [audioPlaylist, setAudioPlaylist] = useState<MediaFile[]>([]);
   const [adminMessages, setAdminMessages] = useState<AdminMessage[]>([]);
   const [reports, setReports] = useState<ListenerReport[]>([]);
+  const [initError, setInitError] = useState<string | null>(null);
 
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
   const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
@@ -83,8 +84,9 @@ const App: React.FC = () => {
         const activeTrack = processedMedia.find(t => t.id === activeTrackId);
         if (activeTrack) setActiveTrackUrl(activeTrack.url);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Data fetch error", err);
+      setInitError(err.message || "Failed to connect to the radio server. Check your connection or credentials.");
     }
   }, [activeTrackId]);
 
@@ -462,6 +464,27 @@ const App: React.FC = () => {
     console.log(`Peak reached! Triggering Jingle ID ${randomJingle}`);
     handlePlayJingle(randomJingle);
   }, []);
+
+  if (initError) {
+    return (
+      <div className="min-h-screen bg-[#f0fff4] flex flex-col items-center justify-center p-6 text-center">
+        <div className="glass-card p-8 rounded-3xl border-red-200 border-2 max-w-md animate-scale-in">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold mb-2">Connection Error</h1>
+          <p className="text-[#008751] opacity-70 mb-6">{initError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-[#008751] text-white py-3 rounded-xl font-bold hover:bg-[#00a86b] transition-all"
+          >
+            Try Refreshing
+          </button>
+          <p className="mt-4 text-xs text-gray-500">
+            Hint: If you're on Vercel, make sure you've added your Environment Variables.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f0fff4] text-[#008751] flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden border-x border-green-100/30">
