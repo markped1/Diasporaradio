@@ -18,8 +18,15 @@ class DBService {
     DISCUSSION_QUEUE: 'ndn_radio_discussion_queue'
   };
 
+  private checkConfig() {
+    if (!supabase) {
+      throw new Error("Supabase configuration missing (VITE_SUPABASE_URL/ANON_KEY). Please add them to Vercel.");
+    }
+  }
+
   async getMidwayState(): Promise<MidwayState | null> {
     try {
+      this.checkConfig();
       const { data, error } = await supabase
         .from('midway_state')
         .select('*')
