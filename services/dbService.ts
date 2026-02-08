@@ -193,7 +193,7 @@ class DBService {
 
   async addMedia(file: MediaFile): Promise<void> {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction(MEDIA_STORE, 'readwrite');
       const store = transaction.objectStore(MEDIA_STORE);
       if (!file.likes) file.likes = 0;
@@ -201,31 +201,79 @@ class DBService {
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
+
+    // If it's a cloud file (URL exists and No binary file), sync to Global Registry
+    if (file.url && !file.file && supabase) {
+      try {
+        const state = await this.getMidwayState();
+        const currentLibrary = state?.shared_media || [];
+        // Prevent duplicates
+        if (!currentLibrary.find(m => m.id === file.id)) {
+          await this.setMidwayState({
+            ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+            shared_media: [file, ...currentLibrary].slice(0, 100), // Keep last 100 shared tracks
+            broadcastPulse: Date.now() // Trigger sync for listeners
+          });
+        }
+      } catch (e) {
+        console.error("Global Library sync failed:", e);
+      }
+    }
   }
 
   async getMedia(): Promise<MediaFile[]> {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
+    const localFiles = await new Promise<MediaFile[]>((resolve, reject) => {
       const transaction = db.transaction(MEDIA_STORE, 'readonly');
       const store = transaction.objectStore(MEDIA_STORE);
       const request = store.getAll();
-      request.onsuccess = () => {
-        const results = request.result as MediaFile[];
-        resolve(results.sort((a, b) => b.timestamp - a.timestamp));
-      };
+      request.onsuccess = () => resolve(request.result as MediaFile[]);
       request.onerror = () => reject(request.error);
     });
+
+    // Merge with Shared Global Library
+    try {
+      const state = await this.getMidwayState();
+      if (state?.shared_media) {
+        // Use a map to handle duplicates, global files overwrite local placeholders
+        const mediaMap = new Map<string, MediaFile>();
+        localFiles.forEach(f => mediaMap.set(f.id, f));
+        state.shared_media.forEach(f => mediaMap.set(f.id, f));
+        return Array.from(mediaMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+      }
+    } catch (e) {
+      console.warn("Could not fetch global library:", e);
+    }
+
+    return localFiles.sort((a, b) => b.timestamp - a.timestamp);
   }
 
   async deleteMedia(id: string): Promise<void> {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction(MEDIA_STORE, 'readwrite');
       const store = transaction.objectStore(MEDIA_STORE);
       const request = store.delete(id);
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
+
+    // Remove from Global Registry if exists
+    try {
+      const state = await this.getMidwayState();
+      if (state?.shared_media) {
+        const updatedLibrary = state.shared_media.filter(m => m.id !== id);
+        if (updatedLibrary.length !== state.shared_media.length) {
+          await this.setMidwayState({
+            ...(state || { activeTrackId: null, activeTrackName: 'Live Stream', isPlaying: false, timestamp: Date.now() }),
+            shared_media: updatedLibrary,
+            broadcastPulse: Date.now()
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Global Library remove failed:", e);
+    }
   }
 
   async getAdminMessages(): Promise<AdminMessage[]> {

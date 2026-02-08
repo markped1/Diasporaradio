@@ -260,7 +260,14 @@ const App: React.FC = () => {
 
       // 2. Sync Track Info
       if (remoteState.activeTrackId !== activeTrackIdRef.current || remoteState.activeTrackName !== currentTrackName) {
-        const track = playlistRef.current.find(t => t.id === remoteState.activeTrackId);
+        // First check local list
+        let track = playlistRef.current.find(t => t.id === remoteState.activeTrackId);
+
+        // If not found, check shared_media in the remote state itself (Immediate Sync)
+        if (!track && remoteState.shared_media) {
+          track = remoteState.shared_media.find(t => t.id === remoteState.activeTrackId);
+        }
+
         if (track) {
           setActiveTrackId(track.id);
           setActiveTrackUrl(track.url);
@@ -270,8 +277,7 @@ const App: React.FC = () => {
           setActiveTrackUrl(DEFAULT_STREAM_URL || null);
           setCurrentTrackName('Live Stream');
         } else if (remoteState.activeTrackName) {
-          // Fallback: Use the name from remote state if we don't have the track in local list
-          // Also fallback to the default stream URL since we can't access the admin's local file
+          // Fallback: Use the name from remote state if we don't have the track anywhere
           setActiveTrackId(remoteState.activeTrackId);
           setActiveTrackUrl(DEFAULT_STREAM_URL || null);
           setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
@@ -304,6 +310,7 @@ const App: React.FC = () => {
       if (remoteState.broadcastPulse && remoteState.broadcastPulse > lastProcessedPulseRef.current) {
         lastProcessedPulseRef.current = remoteState.broadcastPulse;
         console.log("New Broadcast Pulse Received - Ensuring sync...");
+        fetchData(); // REFRESH MEDIA LIST ON PULSE
         if (remoteState.isPlaying && !isRadioPlayingRef.current) {
           setIsRadioPlaying(true);
         } else if (!remoteState.isPlaying && isRadioPlayingRef.current) {
@@ -572,7 +579,16 @@ const App: React.FC = () => {
           onPeakReached={handlePeakReached}
           isDucking={isDucking}
           duckingType={duckingType}
-          onInteract={() => setHasInteracted(true)}
+          onInteract={() => {
+            setHasInteracted(true);
+            // CATCH-UP LOGIC: When listener clicks play, force a sync update
+            dbService.getMidwayState().then(state => {
+              if (state?.isPlaying && !isRadioPlaying) {
+                console.log("Listener Catch-up Triggered");
+                setIsRadioPlaying(true);
+              }
+            });
+          }}
         />
 
         {role === UserRole.LISTENER ? (

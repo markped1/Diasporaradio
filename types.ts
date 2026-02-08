@@ -80,4 +80,5 @@ export interface MidwayState {
     type: 'PLAY' | 'STOP' | 'SYNC';
     timestamp: number;
   };
+  shared_media?: MediaFile[]; // Global music library
 }
