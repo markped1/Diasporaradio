@@ -330,7 +330,8 @@ class DBService {
       console.warn("Supabase not configured. Realtime subscription skipped.");
       return { unsubscribe: () => { } };
     }
-    return supabase
+
+    const channel = supabase
       .channel('midway_changes')
       .on(
         'postgres_changes',
@@ -340,6 +341,12 @@ class DBService {
         }
       )
       .subscribe();
+
+    return {
+      unsubscribe: () => {
+        supabase.removeChannel(channel);
+      }
+    };
   }
 
   async getDiscussionQueue(): Promise<string[]> {

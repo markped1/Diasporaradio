@@ -248,34 +248,31 @@ const App: React.FC = () => {
   }, [activeTrackId, isRadioPlaying]);
 
   // Midway Sync Logic (Supabase Realtime)
-  useEffect(() => {
-    const handleSyncUpdate = (remoteState: MidwayState) => {
-      console.log("Midway Sync (App Sync):", remoteState);
+  const handleSyncUpdate = useCallback((remoteState: MidwayState) => {
+    console.log("Sync Update Received:", {
+      id: remoteState.activeTrackId,
+      name: remoteState.activeTrackName,
+      playing: remoteState.isPlaying,
+      pulse: remoteState.broadcastPulse
+    });
 
-      // 1. Sync Playback State (On-Air status)
-      // SYNCED: We sync isPlaying for everyone to ensure listeners join the broadcast automatically.
-      if (remoteState.isPlaying !== isRadioPlayingRef.current) {
-        setIsRadioPlaying(remoteState.isPlaying);
-      }
+    // 1. Sync Playback State
+    if (remoteState.isPlaying !== isRadioPlayingRef.current) {
+      setIsRadioPlaying(remoteState.isPlaying);
+    }
 
-      // 2. Sync Track Info
-      if (remoteState.activeTrackId !== activeTrackIdRef.current || remoteState.activeTrackName !== currentTrackName) {
-        // High-Priority: Use Direct URL if provided by Admin (No lookup delay)
-        if (remoteState.activeTrackUrl) {
-          setActiveTrackId(remoteState.activeTrackId);
-          setActiveTrackUrl(remoteState.activeTrackUrl);
-          setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
-          return;
-        }
-
-        // Fallback 1: Check local list
+    // 2. Sync Track Info
+    if (remoteState.activeTrackId !== activeTrackIdRef.current || remoteState.activeTrackName !== currentTrackName) {
+      if (remoteState.activeTrackUrl) {
+        setActiveTrackId(remoteState.activeTrackId);
+        setActiveTrackUrl(remoteState.activeTrackUrl);
+        setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
+      } else {
+        // Fallback to registry lookups
         let track = playlistRef.current.find(t => t.id === remoteState.activeTrackId);
-
-        // Fallback 2: Check shared_media in the remote state itself
         if (!track && remoteState.shared_media) {
           track = remoteState.shared_media.find(t => t.id === remoteState.activeTrackId);
         }
-
         if (track) {
           setActiveTrackId(track.id);
           setActiveTrackUrl(track.url);
@@ -290,57 +287,65 @@ const App: React.FC = () => {
           setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
         }
       }
+    }
 
-      // 3. Sync News
-      if (remoteState.latest_news && remoteState.latest_news.length > 0) {
-        setNews(remoteState.latest_news);
+    // 3. Sync News
+    if (remoteState.latest_news && remoteState.latest_news.length > 0) {
+      setNews(remoteState.latest_news);
+    }
+
+    // 4. Sync REAL-TIME Broadcasts
+    if (remoteState.activeBroadcast && remoteState.activeBroadcast.id !== lastBroadcastIdRef.current) {
+      lastBroadcastIdRef.current = remoteState.activeBroadcast.id;
+      const b = remoteState.activeBroadcast;
+      if (b.type === 'news') {
+        getNewsAudio(b.text).then(audio => audio && playRawPcm(audio, 'news'));
+      } else if (b.type === 'discussion') {
+        getDiscussionAudio(b.text).then(audio => audio && playRawPcm(audio, 'news'));
       }
+    }
 
-      // 4. Sync REAL-TIME Broadcasts (Manual Admin Speech)
-      if (remoteState.activeBroadcast && remoteState.activeBroadcast.id !== lastBroadcastIdRef.current) {
-        lastBroadcastIdRef.current = remoteState.activeBroadcast.id;
-        const b = remoteState.activeBroadcast;
-        console.log(`Incoming Broadcast Sync: ${b.type} - ${b.id}`);
+    // 5. HYBRID SYNC: Force re-sync on pulse
+    if (remoteState.broadcastPulse && remoteState.broadcastPulse > lastProcessedPulseRef.current) {
+      lastProcessedPulseRef.current = remoteState.broadcastPulse;
+      console.log("New Broadcast Pulse - Triggering Data Refresh...");
+      fetchData();
+    }
+  }, [currentTrackName, cleanTrackName, fetchData, playRawPcm]);
 
-        if (b.type === 'news') {
-          getNewsAudio(b.text).then(audio => {
-            if (audio) playRawPcm(audio, 'news');
-          });
-        } else if (b.type === 'discussion') {
-          getDiscussionAudio(b.text).then(audio => {
-            if (audio) playRawPcm(audio, 'news');
-          });
-        }
-      }
-
-      // 5. HYBRID SYNC: Force re-sync on pulse
-      if (remoteState.broadcastPulse && remoteState.broadcastPulse > lastProcessedPulseRef.current) {
-        lastProcessedPulseRef.current = remoteState.broadcastPulse;
-        console.log("New Broadcast Pulse Received - Ensuring sync...");
-        fetchData(); // REFRESH MEDIA LIST ON PULSE
-        if (remoteState.isPlaying && !isRadioPlayingRef.current) {
-          setIsRadioPlaying(true);
-        } else if (!remoteState.isPlaying && isRadioPlayingRef.current) {
-          setIsRadioPlaying(false);
-        }
-      }
-    };
-
+  // Midway Sync Logic (Supabase Realtime)
+  useEffect(() => {
     // Initial fetch to get the current state
     dbService.getMidwayState()
       .then(remoteState => {
         if (remoteState) handleSyncUpdate(remoteState);
       })
       .catch(err => {
-        console.warn("Initial Midway sync failed - relying on Realtime:", err);
+        console.warn("Initial Midway sync failed:", err);
       });
 
-    const subscription = dbService.subscribeToMidway(handleSyncUpdate);
+    const subscription = dbService.subscribeToMidway((remoteState) => {
+      handleSyncUpdate(remoteState);
+    });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [playlistRef]); // No longer depends on activeTrackId
+  }, [handleSyncUpdate]);
+
+  useEffect(() => {
+    const handleInteraction = () => {
+      if (!hasInteracted) {
+        setHasInteracted(true);
+        // Force sync on first interaction
+        dbService.getMidwayState().then(state => {
+          if (state) handleSyncUpdate(state);
+        });
+      }
+    };
+    window.addEventListener('click', handleInteraction);
+    return () => window.removeEventListener('click', handleInteraction);
+  }, [hasInteracted, handleSyncUpdate]);
 
   useEffect(() => {
     if (hasInteracted && pendingAudioRef.current) {
@@ -588,11 +593,11 @@ const App: React.FC = () => {
           duckingType={duckingType}
           onInteract={() => {
             setHasInteracted(true);
-            // CATCH-UP LOGIC: When listener clicks play, force a sync update
+            // CATCH-UP LOGIC: Force a full sync update from the cloud immediately
             dbService.getMidwayState().then(state => {
-              if (state?.isPlaying && !isRadioPlaying) {
-                console.log("Listener Catch-up Triggered");
-                setIsRadioPlaying(true);
+              if (state) {
+                console.log("Listener Catch-up Triggered via Interaction");
+                handleSyncUpdate(state);
               }
             });
           }}
@@ -639,7 +644,8 @@ const App: React.FC = () => {
                 activeTrackId: t.id,
                 activeTrackName: cleanTrackName(t.name),
                 activeTrackUrl: t.url, // Pass direct URL to listeners
-                isPlaying: true
+                isPlaying: true,
+                broadcastPulse: Date.now() // FORCE SYNC ON TRACK CHANGE
               });
             }}
             isRadioPlaying={isRadioPlaying}
