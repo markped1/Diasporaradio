@@ -224,7 +224,8 @@ class DBService {
             url: file.url,
             type: file.type,
             timestamp: file.timestamp,
-            likes: file.likes || 0
+            likes: file.likes || 0,
+            folder: file.folder || 'Uncategorized'
           });
 
         if (error) {

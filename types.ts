@@ -18,6 +18,7 @@ export interface MediaFile {
   type: 'audio' | 'video' | 'image';
   timestamp: number;
   likes?: number;
+  folder?: string;
 }
 
 export interface AdminMessage {

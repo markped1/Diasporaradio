@@ -46,6 +46,7 @@ const AdminView: React.FC<AdminViewProps> = ({
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [mediaList, setMediaList] = useState<MediaFile[]>([]);
   const [reports, setReports] = useState<ListenerReport[]>([]);
@@ -132,6 +133,13 @@ const AdminView: React.FC<AdminViewProps> = ({
             cloudUrl = await dbService.uploadMedia(file) || '';
           }
 
+          // Determine folder from webkitRelativePath if it exists (folder upload)
+          const relPath = (file as any).webkitRelativePath;
+          let fileFolder = currentFolder || 'Uncategorized';
+          if (relPath && relPath.includes('/')) {
+            fileFolder = relPath.split('/')[0];
+          }
+
           await dbService.addMedia({
             id: 'media-' + Math.random().toString(36).substr(2, 9),
             name: file.name,
@@ -139,7 +147,8 @@ const AdminView: React.FC<AdminViewProps> = ({
             file: cloudUrl ? undefined : file,
             type: finalType,
             timestamp: Date.now(),
-            likes: 0
+            likes: 0,
+            folder: fileFolder
           });
           successCount++;
         } catch (err: any) {
@@ -173,7 +182,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     setTimeout(() => setStatusMsg(''), 3000);
   };
 
-  const triggerUpload = (accept: string) => {
+  const triggerUpload = (accept: string = 'audio/*') => {
     if (fileInputRef.current) {
       fileInputRef.current.setAttribute('accept', accept);
       fileInputRef.current.click();
@@ -540,33 +549,94 @@ const AdminView: React.FC<AdminViewProps> = ({
             {mediaSubTab === 'video' && (
               <button onClick={() => triggerUpload('video/*,image/*')} className="w-full bg-blue-600 text-white py-4 rounded-2xl flex flex-col items-center justify-center shadow-lg active:scale-95 transition-all"><i className="fas fa-cloud-upload-alt text-xl mb-1"></i><span className="text-[10px] font-black uppercase tracking-widest">Upload New Ad Content</span></button>
             )}
-            <div className="grid gap-2">
-              {filteredMedia.map(item => (
-                <div key={item.id} className="bg-white p-3 rounded-xl border border-green-50 flex items-center justify-between shadow-sm animate-scale-in">
-                  <div className="flex items-center space-x-3 truncate pr-4">
-                    <i className={`fas ${item.type === 'audio' ? 'fa-music' : 'fa-film'} text-xs text-green-600`}></i>
-                    <div className="flex flex-col truncate">
-                      <p className="text-[9px] font-bold text-green-950 truncate">{item.name}</p>
-                      <div className="flex items-center space-x-1">
-                        {item.url ? (
-                          <span className="text-[6px] font-black uppercase text-blue-500 flex items-center">
-                            <i className="fas fa-cloud mr-1"></i> Cloud Synced
-                          </span>
-                        ) : (
-                          <span className="text-[6px] font-black uppercase text-amber-500 flex items-center">
-                            <i className="fas fa-microchip mr-1"></i> Local Only
-                          </span>
-                        )}
+            {/* FOLDER NAVIGATION / BACK BUTTON */}
+            {currentFolder && (
+              <button
+                onClick={() => setCurrentFolder(null)}
+                className="flex items-center text-[10px] font-black uppercase text-green-700 hover:text-green-950 transition-colors"
+              >
+                <i className="fas fa-chevron-left mr-2"></i> Back to Folders
+              </button>
+            )}
+
+            {!currentFolder ? (
+              <div className="grid grid-cols-2 gap-3">
+                {['Music', 'Jingles', 'Ads', 'News', 'Recordings'].map(folder => {
+                  const count = mediaList.filter(m => m.folder === folder).length;
+                  return (
+                    <button
+                      key={folder}
+                      onClick={() => setCurrentFolder(folder)}
+                      className="bg-white p-4 rounded-2xl border border-green-50 shadow-sm flex flex-col items-center justify-center space-y-2 hover:border-green-200 transition-all active:scale-95"
+                    >
+                      <i className="fas fa-folder text-2xl text-amber-500"></i>
+                      <span className="text-[10px] font-black uppercase text-green-950">{folder}</span>
+                      <span className="text-[7px] font-bold text-gray-400 uppercase">{count} Items</span>
+                    </button>
+                  );
+                })}
+                {/* Dynamically detected folders that aren't in the default 5 */}
+                {Array.from(new Set(mediaList.map(m => m.folder || 'Uncategorized')))
+                  .filter(f => !['Music', 'Jingles', 'Ads', 'News', 'Recordings'].includes(f as string))
+                  .map(folder => {
+                    const count = mediaList.filter(m => m.folder === folder).length;
+                    return (
+                      <button
+                        key={folder}
+                        onClick={() => setCurrentFolder(folder)}
+                        className="bg-white p-4 rounded-2xl border border-green-50 shadow-sm flex flex-col items-center justify-center space-y-2 hover:border-green-200 transition-all active:scale-95"
+                      >
+                        <i className="fas fa-folder text-2xl text-green-400"></i>
+                        <span className="text-[10px] font-black uppercase text-green-950">{folder}</span>
+                        <span className="text-[7px] font-bold text-gray-400 uppercase">{count} Items</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-black uppercase text-green-950 tracking-widest flex items-center">
+                    <i className="fas fa-folder-open mr-2 text-amber-500"></i> {currentFolder}
+                  </h3>
+                  <button onClick={() => triggerUpload()} className="text-[7px] font-black uppercase bg-green-600 text-white px-3 py-1.5 rounded-lg shadow-sm active:scale-95">Add to {currentFolder}</button>
+                </div>
+
+                <div className="grid gap-2">
+                  {filteredMedia.filter(m => m.folder === currentFolder || (!m.folder && currentFolder === 'Uncategorized')).map(item => (
+                    <div key={item.id} className="bg-white p-3 rounded-xl border border-green-50 flex items-center justify-between shadow-sm animate-scale-in">
+                      <div className="flex items-center space-x-3 truncate pr-4">
+                        <i className={`fas ${item.type === 'audio' ? 'fa-music' : 'fa-film'} text-xs text-green-600`}></i>
+                        <div className="flex flex-col truncate">
+                          <p className="text-[9px] font-bold text-green-950 truncate">{item.name}</p>
+                          <div className="flex items-center space-x-1">
+                            {item.url ? (
+                              <span className="text-[6px] font-black uppercase text-blue-500 flex items-center">
+                                <i className="fas fa-cloud mr-1"></i> Cloud Synced
+                              </span>
+                            ) : (
+                              <span className="text-[6px] font-black uppercase text-amber-500 flex items-center">
+                                <i className="fas fa-microchip mr-1"></i> Local Only
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex space-x-1">
+                        <button onClick={() => onPlayTrack(item)} className="w-7 h-7 bg-green-50 text-green-600 rounded-full flex items-center justify-center"><i className="fas fa-play text-[8px]"></i></button>
+                        <button onClick={() => dbService.deleteMedia(item.id).then(loadData)} className="w-7 h-7 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><i className="fas fa-trash-alt text-[8px]"></i></button>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex space-x-1">
-                    <button onClick={() => onPlayTrack(item)} className="w-7 h-7 bg-green-50 text-green-600 rounded-full flex items-center justify-center"><i className="fas fa-play text-[8px]"></i></button>
-                    <button onClick={() => dbService.deleteMedia(item.id).then(loadData)} className="w-7 h-7 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><i className="fas fa-trash-alt text-[8px]"></i></button>
-                  </div>
+                  ))}
+                  {filteredMedia.filter(m => m.folder === currentFolder || (!m.folder && currentFolder === 'Uncategorized')).length === 0 && (
+                    <div className="py-10 text-center opacity-40">
+                      <i className="fas fa-inbox text-3xl mb-2"></i>
+                      <p className="text-[8px] font-black uppercase tracking-widest">Folder Empty</p>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )
       }
