@@ -34,28 +34,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   const [localTime, setLocalTime] = useState<string>('');
   const [reportText, setReportText] = useState('');
   const [isReporting, setIsReporting] = useState(false);
-  const [adIndex, setAdIndex] = useState(0);
   const [shareFeedback, setShareFeedback] = useState('');
-
-  const timerRef = useRef<number | null>(null);
-
-  const nextAd = useCallback(() => {
-    if (sponsoredVideos.length > 0) {
-      setAdIndex((prev) => (prev + 1) % sponsoredVideos.length);
-    }
-  }, [sponsoredVideos.length]);
-
-  useEffect(() => {
-    if (sponsoredVideos.length > 0) {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => {
-        nextAd();
-      }, 20000);
-    }
-    return () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-    };
-  }, [adIndex, sponsoredVideos.length, nextAd]);
 
   useEffect(() => {
     if (navigator.geolocation) {
