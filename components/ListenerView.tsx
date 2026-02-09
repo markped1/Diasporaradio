@@ -77,9 +77,6 @@ const ListenerView: React.FC<ListenerViewProps> = ({
     setShareFeedback('Report Sent!');
     setTimeout(() => setShareFeedback(''), 3000);
   };
-
-  const currentAd = sponsoredVideos[adIndex];
-
   return (
     <div className="flex flex-col space-y-4 pb-8 px-1 text-[#008751] animate-scale-in">
       {/* 1. STATUS BAR */}
@@ -99,17 +96,15 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         <div className="absolute top-0 right-0 w-16 h-16 bg-green-50/50 rounded-full -mr-8 -mt-8"></div>
       </div>
 
-
-      {/* 2. SPONSORED VIDEO / VISUALIZER */}
-      {currentAd && (
-        <SponsoredVideo
-          video={currentAd}
-          onEnded={() => {
-            // Optional: Handle ad completion logic if needed
-          }}
+      {/* 2. NDRTV LIVE STAGE */}
+      <section className="space-y-1">
+        <TVPlayer
+          playlist={tvPlaylist}
+          adverts={tvAdverts}
+          currentVideo={tvPlaylist[0]}
+          onPlayVideo={(v) => { /* Handle specific video selection if needed */ }}
         />
-      )}
-
+      </section>
 
       {/* 2. COMMUNITY DESK (Journalist HQ) */}
       <section className="space-y-1">
