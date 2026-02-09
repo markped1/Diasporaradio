@@ -21,7 +21,15 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   news,
   sponsoredVideos,
   reports,
-  adminMessages = []
+  news,
+  sponsoredVideos,
+  reports,
+  adminMessages = [],
+  isRadioPlaying,
+  onStateChange,
+  activeTrackUrl,
+  currentTrackName,
+  onPlayTrack
 }) => {
   const [location, setLocation] = useState<string>('Syncing...');
   const [localTime, setLocalTime] = useState<string>('');
@@ -112,6 +120,17 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         </button>
         <div className="absolute top-0 right-0 w-16 h-16 bg-green-50/50 rounded-full -mr-8 -mt-8"></div>
       </div>
+      115:
+      116:       {/* 2. SPONSORED VIDEO / VISUALIZER */}
+      117:       <SponsoredVideo
+118:         currentAd={currentAd}
+      119:         isRadioPlaying={isRadioPlaying}
+      120:         onTogglePlay={() => onStateChange(!isRadioPlaying)}
+      121:         activeTrackUrl={activeTrackUrl}
+      122:         currentTrackName={currentTrackName}
+      123:         onPlayTrack={onPlayTrack}
+      124:         adminMessages={adminMessages}
+125:       />
 
 
       {/* 2. COMMUNITY DESK (Journalist HQ) */}
