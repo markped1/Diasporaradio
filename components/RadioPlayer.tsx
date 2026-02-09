@@ -139,10 +139,23 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
   const handlePlayPause = async () => {
     if (uiMode === 'listener') {
-      onInteract?.(); // This sets hasInteracted in App.tsx -> triggers useListenerAudio
+      onInteract?.();
+      // Proactive play attempt to satisfy browser policies via direct user gesture
+      if (!isPlaying && broadcast?.activeTrackUrl) {
+        radioEngine.play(broadcast.activeTrackUrl);
+      } else if (isPlaying) {
+        radioEngine.stop();
+      }
     } else {
       const nextState = !broadcast?.isPlaying;
       onStateChange(nextState);
+
+      // For Admin: Local immediate feedback
+      if (nextState && broadcast?.activeTrackUrl) {
+        radioEngine.play(broadcast.activeTrackUrl);
+      } else if (!nextState) {
+        radioEngine.stop();
+      }
     }
   };
 

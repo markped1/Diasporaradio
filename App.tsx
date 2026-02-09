@@ -42,8 +42,8 @@ const App: React.FC = () => {
   const { broadcast, syncStatus } = useBroadcast();
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  // DRIVER: All listeners (including Admin) use this to hear audio based on global state
-  useListenerAudio(hasInteracted && role === UserRole.LISTENER);
+  // DRIVER: All users (including Admin) hear audio based on global state once they interact
+  useListenerAudio(hasInteracted);
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
   const [expandedMedia, setExpandedMedia] = useState<'radio' | 'video' | 'none'>('none');
 
@@ -358,6 +358,9 @@ const App: React.FC = () => {
           isPlaying: true,
           broadcastPulse: Date.now()
         });
+
+        // 2. IMMEDIATE FEEDBACK for Admin
+        if (broadcastUrl) radioEngine.play(broadcastUrl);
       }
     }
   }, [broadcast?.activeTrackId, isShuffle, activeFolder, role, sponsoredMedia]);
@@ -379,6 +382,9 @@ const App: React.FC = () => {
         isPlaying: true,
         broadcastPulse: Date.now()
       });
+
+      // IMMEDIATE FEEDBACK for Admin
+      if (!isLocalBlob) radioEngine.play(track.url);
     }
   };
 
@@ -680,12 +686,9 @@ const App: React.FC = () => {
           <AdminView
             onRefreshData={fetchData} logs={logs}
             onPlayTrack={async (t) => {
-              // 1. IMMEDIATE FEEDBACK for Admin
-              setActiveTrackId(t.id);
-              setActiveTrackUrl(t.url);
-              setCurrentTrackName(cleanTrackName(t.name));
-              setIsRadioPlaying(true);
               setHasInteracted(true);
+              // 1. IMMEDIATE FEEDBACK for Admin
+              radioEngine.play(t.url);
 
               try {
                 let broadcastUrl = t.url;
@@ -726,24 +729,20 @@ const App: React.FC = () => {
                 // 1. STARTING MASTER BROADCAST (Global Mode)
                 console.log("🚀 Starting Master Broadcast (Global Mode)");
                 setActiveFolder(null); // Clear local folder restriction
+                setHasInteracted(true);
 
-                // 2. Ensure a track is ready if none is selected
+                // 2. Prepare target track info
+                const globalPlaylist = playlistRef.current;
                 let targetTrackId = broadcast?.activeTrackId;
                 let targetTrackUrl = broadcast?.activeTrackUrl;
                 let targetTrackName = broadcast?.activeTrackName || 'Live Stream';
 
-                // Use playlistRef to get latest tracks
-                const globalPlaylist = playlistRef.current;
-
                 if ((!targetTrackId || targetTrackId === 'default') && globalPlaylist.length > 0) {
-                  // Pick specific track to ensure listeners sync to *something*
                   const randomTrack = globalPlaylist[Math.floor(Math.random() * globalPlaylist.length)];
                   targetTrackId = randomTrack.id;
                   targetTrackUrl = randomTrack.url;
                   targetTrackName = cleanTrackName(randomTrack.name);
                 }
-
-                setHasInteracted(true);
 
                 // 3. Resolve Broadcast URL & Handshake Cloud
                 try {

@@ -12,19 +12,30 @@ class RadioEngine {
     private getAudio() {
         if (!this.audio) {
             this.audio = new Audio();
+            // Try anonymous first, if it fails for some streams we might need to toggle it
             this.audio.crossOrigin = "anonymous";
-            this.audio.preload = "none";
+            this.audio.preload = "auto";
 
+            // Native Listeners for high-fidelity status
+            this.audio.addEventListener('loadstart', () => this.notifyStatus('LOADING'));
             this.audio.addEventListener('waiting', () => this.notifyStatus('LOADING'));
             this.audio.addEventListener('playing', () => this.notifyStatus('PLAYING'));
             this.audio.addEventListener('pause', () => this.notifyStatus('IDLE'));
             this.audio.addEventListener('ended', () => this.notifyStatus('IDLE'));
-            this.audio.addEventListener('error', () => this.notifyStatus('ERROR'));
+            this.audio.addEventListener('error', (e) => {
+                console.error("📡 [RadioEngine] Audio Error:", e);
+                this.notifyStatus('ERROR');
+            });
+
+            // Stalled/Suspend logic
+            this.audio.addEventListener('stalled', () => console.warn("📡 [RadioEngine] Stream stalled"));
+            this.audio.addEventListener('suspend', () => console.log("📡 [RadioEngine] Stream suspended"));
         }
         return this.audio;
     }
 
     private notifyStatus(status: 'IDLE' | 'LOADING' | 'PLAYING' | 'ERROR') {
+        console.log(`📡 [RadioEngine] Status: ${status}`);
         if (this.onStatusChange) {
             this.onStatusChange(status);
         }
@@ -35,7 +46,13 @@ class RadioEngine {
     }
 
     public play(url: string) {
+        if (!url) {
+            this.stop();
+            return;
+        }
+
         const audio = this.getAudio();
+
         if (this.currentUrl !== url) {
             console.log(`📡 [RadioEngine] Loading new URL: ${url}`);
             audio.src = url;
@@ -43,17 +60,21 @@ class RadioEngine {
             audio.load();
         }
 
-        if (audio.paused) {
-            audio.play().catch(err => {
-                console.warn("📡 [RadioEngine] Play blocked or failed:", err.message);
-                this.notifyStatus('ERROR');
-            });
-        }
+        audio.play().catch(err => {
+            if (err.name === 'NotAllowedError') {
+                console.warn("📡 [RadioEngine] Play blocked: User interaction required.");
+            } else {
+                console.error("📡 [RadioEngine] Play failed:", err);
+            }
+            this.notifyStatus('ERROR');
+        });
     }
 
     public stop() {
         if (!this.audio) return;
         this.audio.pause();
+        this.audio.src = ""; // Clear source to stop buffer
+        this.currentUrl = null;
         this.notifyStatus('IDLE');
     }
 
@@ -75,11 +96,11 @@ class RadioEngine {
     }
 
     public getDuration(): number {
-        return this.audio ? this.audio.duration : 0;
+        return this.audio ? (isNaN(this.audio.duration) ? 0 : this.audio.duration) : 0;
     }
 
     public getAudioElement(): HTMLAudioElement | null {
-        return this.audio;
+        return this.getAudio();
     }
 }
 
