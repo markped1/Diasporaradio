@@ -16,6 +16,12 @@ interface ListenerViewProps {
   adminMessages: AdminMessage[];
   reports: ListenerReport[];
   onPlayTrack: (track: MediaFile) => void;
+  isNewsroomActive?: boolean;
+  newsroomContent?: string | null;
+  expandedMedia: 'radio' | 'video' | 'none';
+  setExpandedMedia: (val: 'radio' | 'video' | 'none') => void;
+  activeVideoId?: string | null;
+  activeVideoUrl?: string | null;
 }
 
 const ListenerView: React.FC<ListenerViewProps> = ({
@@ -28,7 +34,13 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   onStateChange,
   activeTrackUrl,
   currentTrackName,
-  onPlayTrack
+  onPlayTrack,
+  isNewsroomActive,
+  newsroomContent,
+  expandedMedia,
+  setExpandedMedia,
+  activeVideoId,
+  activeVideoUrl
 }) => {
   const [location, setLocation] = useState<string>('Syncing...');
   const [localTime, setLocalTime] = useState<string>('');
@@ -117,10 +129,14 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         <TVPlayer
           playlist={tvPlaylist}
           adverts={tvAdverts}
-          currentVideo={selectedVideo || (tvPlaylist.length > 0 ? tvPlaylist[0] : undefined)}
-          onPlayVideo={(v) => setSelectedVideo(v)}
+          currentVideo={tvPlaylist.find(v => v.id === activeVideoId) || (tvPlaylist.length > 0 ? tvPlaylist[0] : undefined)}
+          onPlayVideo={() => { }} // Listeners don't change the video themselves
           onVideoEnd={handleNextVideo}
           showPlaylist={false}
+          isNewsroomActive={isNewsroomActive}
+          newsroomContent={newsroomContent || undefined}
+          isExpanded={expandedMedia === 'video'}
+          onExpandToggle={(expanded) => setExpandedMedia(expanded ? 'video' : 'none')}
         />
       </section>
 

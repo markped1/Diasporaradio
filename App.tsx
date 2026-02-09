@@ -30,6 +30,8 @@ const App: React.FC = () => {
   const [audioPlaylist, setAudioPlaylist] = useState<MediaFile[]>([]);
   const [adminMessages, setAdminMessages] = useState<AdminMessage[]>([]);
   const [reports, setReports] = useState<ListenerReport[]>([]);
+  const [isNewsroomActive, setIsNewsroomActive] = useState(false);
+  const [newsroomContent, setNewsroomContent] = useState<string | null>(null);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
 
@@ -42,6 +44,10 @@ const App: React.FC = () => {
   const [duckingType, setDuckingType] = useState<'news' | 'jingle' | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
+  const [expandedMedia, setExpandedMedia] = useState<'radio' | 'video' | 'none'>('none');
+
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
 
   const aiAudioContextRef = useRef<AudioContext | null>(null);
   const isSyncingRef = useRef(false);
@@ -300,6 +306,12 @@ const App: React.FC = () => {
       setActiveFolder(remoteState.activeFolder || null);
     }
 
+    // NEW: Sync Newsroom State
+    if (remoteState.isNewsroomActive !== undefined) {
+      setIsNewsroomActive(remoteState.isNewsroomActive);
+      setNewsroomContent(remoteState.newsroomContent || null);
+    }
+
     // 3. Sync Track Info
     if (remoteState.activeTrackId !== activeTrackIdRef.current || remoteState.activeTrackName !== currentTrackName) {
       if (remoteState.activeTrackUrl) {
@@ -362,13 +374,21 @@ const App: React.FC = () => {
       }
     }
 
-    // 5. HYBRID SYNC: Force re-sync on pulse
+    // 6. Sync Video
+    if (remoteState.activeVideoId && remoteState.activeVideoId !== activeVideoId) {
+      setActiveVideoId(remoteState.activeVideoId);
+      if (remoteState.activeVideoUrl) {
+        setActiveVideoUrl(remoteState.activeVideoUrl);
+      }
+    }
+
+    // 7. HYBRID SYNC: Force re-sync on pulse
     if (remoteState.broadcastPulse && remoteState.broadcastPulse > lastProcessedPulseRef.current) {
       lastProcessedPulseRef.current = remoteState.broadcastPulse;
       console.log("New Broadcast Pulse - Triggering Data Refresh...");
       fetchData();
     }
-  }, [currentTrackName, cleanTrackName, fetchData, playRawPcm, activeFolder]);
+  }, [currentTrackName, cleanTrackName, fetchData, playRawPcm, activeFolder, activeVideoId]);
 
   // Midway Sync Logic (Supabase Realtime)
   useEffect(() => {
@@ -508,6 +528,26 @@ const App: React.FC = () => {
       activeTrackName: cleanTrackName(track.name),
       activeTrackUrl: isLocalBlob ? null : track.url,
       isPlaying: true
+    });
+  };
+
+  const handleTriggerNewsroom = async (content: string) => {
+    setIsNewsroomActive(true);
+    setNewsroomContent(content);
+    await dbService.updateMidwayState({
+      isNewsroomActive: true,
+      newsroomContent: content,
+      broadcastPulse: Date.now()
+    });
+  };
+
+  const handleEndNewsroom = async () => {
+    setIsNewsroomActive(false);
+    setNewsroomContent(null);
+    await dbService.updateMidwayState({
+      isNewsroomActive: false,
+      newsroomContent: null,
+      broadcastPulse: Date.now()
     });
   };
 
@@ -760,6 +800,8 @@ const App: React.FC = () => {
           duckingType={duckingType}
           uiMode={role === UserRole.LISTENER ? 'listener' : 'full'}
           activeFolder={activeFolder}
+          isExpanded={expandedMedia === 'radio'}
+          onExpandToggle={(expanded) => setExpandedMedia(expanded ? 'radio' : 'none')}
           onInteract={() => {
             setHasInteracted(true);
             // CATCH-UP LOGIC: Force a full sync update from the cloud immediately
@@ -793,12 +835,17 @@ const App: React.FC = () => {
         {role === UserRole.LISTENER ? (
           <ListenerView
             news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
-            // Pass filtered TV content
             tvPlaylist={tvPlaylist}
             tvAdverts={tvAdverts}
             activeTrackUrl={activeTrackUrl}
             currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
             onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
+            isNewsroomActive={isNewsroomActive}
+            newsroomContent={newsroomContent}
+            expandedMedia={expandedMedia}
+            setExpandedMedia={setExpandedMedia}
+            activeVideoId={activeVideoId}
+            activeVideoUrl={activeVideoUrl}
           />
         ) : (
           <AdminView
@@ -898,6 +945,23 @@ const App: React.FC = () => {
             onPing={playPing}
             tvPlaylist={tvPlaylist}
             tvAdverts={tvAdverts}
+            onTriggerNewsroom={handleTriggerNewsroom}
+            isNewsroomActive={isNewsroomActive}
+            newsroomContent={newsroomContent}
+            onEndNewsroom={handleEndNewsroom}
+            onPlayVideo={async (v) => {
+              setActiveVideoId(v.id);
+              setActiveVideoUrl(v.url);
+              if (role === UserRole.ADMIN) {
+                await dbService.updateMidwayState({
+                  activeVideoId: v.id,
+                  activeVideoUrl: v.url,
+                  broadcastPulse: Date.now()
+                });
+              }
+            }}
+            activeVideoId={activeVideoId}
+            activeVideoUrl={activeVideoUrl}
           />
         )}
       </main>

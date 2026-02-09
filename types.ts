@@ -84,4 +84,8 @@ export interface MidwayState {
     timestamp: number;
   };
   shared_media?: MediaFile[]; // Global music library
+  isNewsroomActive?: boolean; // If true, show the virtual newsroom stage
+  newsroomContent?: string | null; // The text the anchors should read
+  activeVideoId?: string | null; // Currently playing video ID
+  activeVideoUrl?: string | null; // Currently playing video URL
 }

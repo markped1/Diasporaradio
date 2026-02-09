@@ -1,6 +1,6 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { MediaFile } from '../types';
+import Newsroom from './Newsroom';
 
 interface TVPlayerProps {
     playlist: MediaFile[]; // All non-ad videos
@@ -9,11 +9,28 @@ interface TVPlayerProps {
     onVideoEnd?: () => void;
     onPlayVideo?: (video: MediaFile) => void;
     showPlaylist?: boolean;
+    isNewsroomActive?: boolean;
+    newsroomContent?: string;
+    onNewsroomEnd?: () => void;
+    isExpanded?: boolean;
+    onExpandToggle?: (isExpanded: boolean) => void;
 }
 
 const AD_INTERVAL_SECONDS = 600; // 10 Minutes
 
-const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, onVideoEnd, onPlayVideo, showPlaylist = true }) => {
+const TVPlayer: React.FC<TVPlayerProps> = ({
+    playlist,
+    adverts,
+    currentVideo,
+    onVideoEnd,
+    onPlayVideo,
+    showPlaylist = true,
+    isNewsroomActive,
+    newsroomContent,
+    onNewsroomEnd,
+    isExpanded = false,
+    onExpandToggle
+}) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackTime, setPlaybackTime] = useState(0); // Tracks time since last ad
@@ -60,8 +77,19 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
             videoRef.current.pause();
         } else {
             videoRef.current.play().catch(e => console.warn("Play failed", e));
+            if (!isExpanded) onExpandToggle?.(true);
         }
         setIsPlaying(!isPlaying);
+    };
+
+    const toggleNativeFullscreen = () => {
+        if (videoRef.current) {
+            if (videoRef.current.requestFullscreen) {
+                videoRef.current.requestFullscreen();
+            } else if ((videoRef.current as any).webkitRequestFullscreen) {
+                (videoRef.current as any).webkitRequestFullscreen();
+            }
+        }
     };
 
     // 2. Main Video Effect
@@ -77,10 +105,17 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
     }, [currentVideo, isAdBreak]);
 
     return (
-        <div className="flex flex-col w-full space-y-4 animate-scale-in">
-
+        <div className={`flex flex-col space-y-4 ${isExpanded ? 'fixed inset-0 z-[60] bg-black p-0' : ''}`}>
+            {/* EXPAND/CLOSE BUTTONS (MOBILE ONLY) - Visible only when NOT in native full screen but in app expanded state */}
+            {isExpanded && (
+                <div className="absolute top-4 right-4 z-[70] flex space-x-2">
+                    <button onClick={() => onExpandToggle?.(false)} className="bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/20">
+                        <i className="fas fa-compress-alt mr-2"></i> Minimal
+                    </button>
+                </div>
+            )}
             {/* MAIN TV SCREEN */}
-            <div className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-gray-900 group">
+            <div className={`relative w-full bg-black overflow-hidden shadow-2xl border-gray-900 group ${isExpanded ? 'h-full border-0 rounded-0' : 'aspect-video rounded-3xl border-4'}`}>
 
                 {/* AD OVERLAY PLAYER */}
                 {isAdBreak && activeAd && (
@@ -102,7 +137,7 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
                     ref={videoRef}
                     className="w-full h-full object-cover cursor-pointer"
                     onClick={togglePlay}
-                    controls={false} // Use custom controls or allow overlay
+                    controls={false}
                     onPlay={() => setIsPlaying(true)}
                     onPause={() => setIsPlaying(false)}
                     onEnded={onVideoEnd}
@@ -117,16 +152,31 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
                         </div>
                         <span className="text-white font-black text-xs shadow-black drop-shadow-md">TV</span>
                     </div>
-                    {isPlaying && (
-                        <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-red-600 rounded-full w-fit shadow-lg animate-pulse border border-white/10">
-                            <div className="w-1 h-1 bg-white rounded-full"></div>
-                            <span className="text-[6px] text-white font-bold uppercase tracking-widest">Live</span>
-                        </div>
-                    )}
                 </div>
 
-                {/* INITIAL PLAY OVERLAY (Only if not playing) */}
-                {!isPlaying && !isAdBreak && (
+                {/* LIVE INDICATOR (TOP RIGHT) */}
+                {isPlaying && (
+                    <div className="absolute top-4 right-4 pointer-events-none flex items-center space-x-1.5 px-3 py-1 bg-red-600 rounded-full w-fit shadow-2xl animate-pulse border border-white/20 z-20">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                        <span className="text-[7px] text-white font-black uppercase tracking-widest text shadow-sm">Live</span>
+                    </div>
+                )}
+
+                {/* VIRTUAL NEWSROOM OVERLAY */}
+                {isNewsroomActive && (
+                    <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-scale-in">
+                        <div className="w-full max-w-4xl">
+                            <Newsroom
+                                isActive={isNewsroomActive}
+                                newsContent={newsroomContent}
+                                onBroadcastEnd={onNewsroomEnd}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* INITIAL PLAY OVERLAY */}
+                {!isPlaying && !isAdBreak && !isNewsroomActive && (
                     <div
                         onClick={togglePlay}
                         className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 cursor-pointer backdrop-blur-[1px]"
@@ -142,13 +192,13 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
                                 <div className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 backdrop-blur-md">
                                     <i className="fas fa-play text-white/40"></i>
                                 </div>
-                                <span className="text-[10px] text-white/40 font-black uppercase tracking-[4px]">Click to Broadast</span>
+                                <span className="text-[10px] text-white/40 font-black uppercase tracking-[4px]">Click to Broadcast</span>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* PREMIUM CONTROL BAR (Bottom Left) */}
+                {/* PREMIUM CONTROL BAR */}
                 <div className={`absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black to-transparent flex items-end p-4 transition-all duration-500 ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
                     <div className="flex items-center space-x-4">
                         <button
@@ -157,19 +207,37 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
                         >
                             <i className={`fas ${isPlaying ? 'fa-pause text-xs' : 'fa-play text-xs ml-0.5'}`}></i>
                         </button>
-
                         {currentVideo && (
                             <div className="flex flex-col mb-1 select-none">
                                 <span className="text-[10px] text-white/30 font-black uppercase tracking-widest leading-none mb-1">Live Channel</span>
-                                <span className="text-xs text-white font-black truncate max-w-[250px] leading-none">{currentVideo.name}</span>
+                                <span className="text-xs text-white font-black truncate max-w-[150px] leading-none">{currentVideo.name}</span>
                             </div>
                         )}
+
+                        <div className="flex-grow"></div>
+
+                        <div className="flex items-center space-x-2 mr-2">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); toggleNativeFullscreen(); }}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60"
+                                title="Native Fullscreen"
+                            >
+                                <i className="fas fa-expand"></i>
+                            </button>
+                            {!isExpanded && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onExpandToggle?.(true); }}
+                                    className="px-3 h-8 flex items-center justify-center rounded-lg bg-[#008751]/80 hover:bg-[#008751] text-white text-[8px] font-black uppercase tracking-widest"
+                                >
+                                    Pop Screen
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
-
             </div>
 
-            {/* CHANNEL FOOTER (PLAYLIST) - Only shown if enabled (e.g. for Admin) */}
+            {/* UP NEXT QUEUE */}
             {showPlaylist && (
                 <div className="bg-gray-900/50 p-4 rounded-xl border border-white/5">
                     <h3 className="text-xs font-black text-white/40 uppercase tracking-widest mb-3">Up Next on NDRTV</h3>
@@ -195,7 +263,6 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
                     </div>
                 </div>
             )}
-
         </div>
     );
 };

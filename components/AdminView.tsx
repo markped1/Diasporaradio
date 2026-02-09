@@ -23,6 +23,13 @@ interface AdminViewProps {
   tvPlaylist: MediaFile[];
   tvAdverts: MediaFile[];
   news: NewsItem[];
+  onTriggerNewsroom?: (content: string) => Promise<void>;
+  isNewsroomActive?: boolean;
+  newsroomContent?: string | null;
+  onEndNewsroom?: () => Promise<void>;
+  onPlayVideo?: (video: MediaFile) => void;
+  activeVideoId?: string | null;
+  activeVideoUrl?: string | null;
 }
 
 type Tab = 'command' | 'bulletin' | 'media' | 'inbox' | 'logs';
@@ -48,7 +55,14 @@ const AdminView: React.FC<AdminViewProps> = ({
   activeFolder,
   tvPlaylist,
   tvAdverts,
-  news = []
+  news = [],
+  onTriggerNewsroom,
+  isNewsroomActive,
+  newsroomContent,
+  onEndNewsroom,
+  onPlayVideo,
+  activeVideoId,
+  activeVideoUrl
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
@@ -569,7 +583,12 @@ const AdminView: React.FC<AdminViewProps> = ({
                 <div key={n.id} className="bg-white p-4 rounded-2xl border border-green-50 shadow-sm space-y-3 animate-scale-in">
                   <h4 className="text-[10px] font-black text-green-950">{n.title}</h4>
                   <p className="text-[9px] text-green-800 font-medium">{n.content}</p>
-                  <button onClick={() => handleManualBroadcast(n)} className="w-full bg-green-50 text-green-700 py-2 rounded-lg text-[7px] font-black uppercase flex items-center justify-center"><i className="fas fa-volume-up mr-2"></i> Voice Broadcast Story</button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => handleManualBroadcast(n)} className="w-full bg-green-50 text-green-700 py-2 rounded-lg text-[7px] font-black uppercase flex items-center justify-center border border-green-100"><i className="fas fa-volume-up mr-2"></i> Voice</button>
+                    <button onClick={() => onTriggerNewsroom?.(`Headline: ${n.title}. ${n.content}`)} className={`w-full py-2 rounded-lg text-[7px] font-black uppercase flex items-center justify-center border transition-all ${isNewsroomActive ? 'bg-indigo-600 text-white border-indigo-500 animate-pulse' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
+                      <i className={`fas ${isNewsroomActive ? 'fa-video' : 'fa-users'} mr-2`}></i> {isNewsroomActive ? 'On Air' : 'Newsroom'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -609,10 +628,13 @@ const AdminView: React.FC<AdminViewProps> = ({
                   <TVPlayer
                     playlist={tvPlaylist}
                     adverts={tvAdverts}
-                    currentVideo={selectedTvVideo || (tvPlaylist.length > 0 ? tvPlaylist[0] : undefined)}
-                    onPlayVideo={(v) => setSelectedTvVideo(v)}
+                    currentVideo={tvPlaylist.find(v => v.id === activeVideoId) || (tvPlaylist.length > 0 ? tvPlaylist[0] : undefined)}
+                    onPlayVideo={onPlayVideo}
                     onVideoEnd={handleNextTvVideo}
                     showPlaylist={true} // ADMIN CAN SEE QUEUE
+                    isNewsroomActive={isNewsroomActive}
+                    newsroomContent={newsroomContent || undefined}
+                    onNewsroomEnd={onEndNewsroom}
                   />
 
                   <div className="mt-4 flex items-center justify-between">

@@ -16,6 +16,8 @@ interface RadioPlayerProps {
   onInteract?: () => void;
   uiMode?: 'full' | 'headless' | 'listener';
   activeFolder?: string | null;
+  isExpanded?: boolean;
+  onExpandToggle?: (isExpanded: boolean) => void;
 }
 
 const RadioPlayer: React.FC<RadioPlayerProps> = ({
@@ -29,7 +31,9 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   duckingType = null,
   onInteract,
   uiMode = 'full',
-  activeFolder = null
+  activeFolder = null,
+  isExpanded = false,
+  onExpandToggle
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1.0);
@@ -400,125 +404,111 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
   if (uiMode === 'headless') return null;
 
-  // 🎧 LISTENER CONSOLE UI (IMMERSIVE MODE)
+  const toggleExpand = () => onExpandToggle?.(!isExpanded);
+
+  // 🎧 LISTENER CONSOLE UI (REFINED LOGO + DISPLAY)
   if (uiMode === 'listener') {
     return (
-      <div className="w-full flex flex-col items-center space-y-6 animate-scale-in pb-4">
-        {/* TOP STATION HEADER */}
-        <div className="flex flex-col items-center space-y-1 mb-2">
-          <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${isPlaying ? 'bg-red-500 animate-ping shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-gray-700'}`}></div>
-            <h2 className={`text-sm font-black uppercase tracking-[0.4em] ${isPlaying ? 'text-red-500' : 'text-gray-500'}`}>
-              {isPlaying ? 'ON-AIR STUDIO' : 'STATION STANDBY'}
-            </h2>
+      <div className={`w-full flex flex-col items-center space-y-4 animate-scale-in pb-2 ${isExpanded ? 'fixed inset-0 z-[60] bg-[#f0fff4] p-6 lg:relative lg:inset-auto lg:p-0' : ''}`}>
+        {/* EXPAND/CLOSE BUTTONS (MOBILE ONLY) */}
+        {!isExpanded ? (
+          <div className="w-full flex justify-end px-2 translate-y-2">
+            <button onClick={toggleExpand} className="bg-green-100/80 backdrop-blur-sm text-green-800 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-green-200 shadow-sm transition-all hover:bg-green-200 active:scale-95">
+              <i className="fas fa-expand-alt mr-1"></i> Full Console
+            </button>
           </div>
-          <span className="text-[7px] font-black text-green-900/40 uppercase tracking-widest">Digital Satellite Relay Hub</span>
+        ) : (
+          <div className="w-full flex justify-end px-2 mb-4">
+            <button onClick={toggleExpand} className="bg-white text-green-800 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-200 shadow-md">
+              <i className="fas fa-compress-alt mr-2"></i> Minimal Screen
+            </button>
+          </div>
+        )}
+
+        {/* REFINED LOGO DISPLAY SECTION */}
+        <div className="relative flex flex-col items-center justify-center space-y-4 w-full pt-2">
+          {/* Animated Glow behind Logo when playing */}
+          {isPlaying && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-green-500/20 rounded-full blur-3xl animate-pulse"></div>
+          )}
+
+          <div className="relative z-10 scale-90 transition-transform duration-500">
+            <Logo size="lg" analyser={analyser} isPlaying={isPlaying} />
+          </div>
+
+          {/* STATUS RIBBON */}
+          <div className="flex items-center space-x-2 bg-white/40 backdrop-blur-md px-3 py-1 rounded-full border border-green-100 shadow-sm z-20">
+            <div className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`}></div>
+            <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${isPlaying ? 'text-red-600' : 'text-gray-500'}`}>
+              {isPlaying ? 'Live on Air' : 'Radio Standby'}
+            </span>
+          </div>
         </div>
 
-        {/* PROPER RADIO CHASSIS */}
-        <div className="w-full bg-[#050505] rounded-[2.5rem] border-[4px] border-green-900/30 p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden ring-1 ring-white/10">
-          {/* Signal Grid Background */}
-          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#008751 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+        {/* TRACK DISPLAY (MATCHES ADMIN STYLE) */}
+        <div className="w-full max-w-sm bg-white p-3 rounded-2xl border-2 border-green-100 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-10">
+            <i className="fas fa-tower-broadcast text-xl text-green-800"></i>
+          </div>
 
-          <div className="relative z-10 space-y-8">
-            {/* Frequency & Signal Display */}
-            <div className="flex justify-between items-end border-b border-green-500/10 pb-6">
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black text-green-500/50 uppercase mb-2">Frequency Indicator</span>
-                <div className="flex items-baseline space-x-1">
-                  <span className="text-4xl font-black text-green-400 font-mono tracking-tighter">98.50</span>
-                  <span className="text-lg font-black text-green-600 font-mono">MHz</span>
-                </div>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-[8px] font-black text-green-500/50 uppercase mb-2">Signal Strength</span>
-                <div className="flex items-end space-x-1 h-8">
-                  {[0.4, 0.6, 0.8, 0.5, 0.9, 0.7].map((h, i) => (
-                    <div
-                      key={i}
-                      className={`w-1.5 rounded-t-sm transition-all duration-500 ${isPlaying ? 'bg-green-400' : 'bg-green-900/30'}`}
-                      style={{ height: isPlaying ? `${h * 100}%` : '20%', opacity: 0.3 + (h * 0.7) }}
-                    ></div>
-                  ))}
-                </div>
-              </div>
+          <div className="flex flex-col items-center space-y-2 text-center relative z-10">
+            <span className="text-[7px] font-black text-green-800/40 uppercase tracking-[0.3em]">Direct Studio Feed</span>
+
+            <div className="bg-green-50/50 py-2.5 px-6 rounded-xl border border-green-100/50 shadow-inner w-full">
+              <span className="text-[9px] font-black text-green-950 uppercase block tracking-[0.05em] truncate">
+                {activeTrackUrl ? currentTrackName : 'AWAITING BROADCAST...'}
+              </span>
             </div>
 
-            {/* Main Visualizer & Info Area */}
-            <div className="h-40 bg-black/40 rounded-3xl border border-white/5 relative flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-              {isPlaying && <div className="absolute inset-0 bg-green-500/5 blur-3xl rounded-full"></div>}
-
-              <div className="relative z-20 space-y-4 w-full">
-                <div className="flex flex-col space-y-1">
-                  <span className="text-[7px] font-black text-green-500/40 uppercase tracking-[0.3em]">Currently Receiving</span>
-                  <h3 className="text-sm font-black text-white/90 uppercase tracking-widest line-clamp-2 min-h-[1.5rem] leading-tight px-4">
-                    {activeTrackUrl ? currentTrackName : 'SCANNING FOR BROADCAST...'}
-                  </h3>
-                </div>
-
-                <div className="flex items-center justify-center space-x-4">
-                  <span className="text-[9px] font-mono text-green-400">{formatTime(currentTime)}</span>
-                  <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" style={{ width: `${progress}%` }}></div>
-                  </div>
-                  <span className="text-[9px] font-mono text-green-500/50">{formatTime(duration)}</span>
-                </div>
+            {/* Micro Progress Line */}
+            <div className="w-full flex items-center space-x-3 mt-1">
+              <span className="text-[7px] font-mono text-green-600/40">{formatTime(currentTime)}</span>
+              <div className="flex-grow h-1 bg-green-100 rounded-full overflow-hidden">
+                <div className="h-full bg-[#008751] transition-all duration-300 shadow-[0_0_5px_rgba(0,135,81,0.5)]" style={{ width: `${progress}%` }}></div>
               </div>
-
-              {/* Integrated Visualizer */}
-              <div className="absolute inset-0 z-10 pointer-events-none opacity-40">
-                <Logo size="lg" isPlaying={isPlaying} analyser={analyser} className="opacity-20 scale-150 rotate-12" />
-              </div>
-            </div>
-
-            {/* Master Play / Control Section */}
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center space-x-6">
-                <button
-                  onClick={handlePlayPause}
-                  className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all border-[6px] ${isPlaying
-                    ? 'bg-red-600 border-red-500/20 text-white shadow-[0_0_30px_rgba(220,38,38,0.4)]'
-                    : 'bg-green-600 border-green-500/20 text-white shadow-[0_0_30px_rgba(22,163,74,0.3)] hover:bg-green-500'
-                    }`}
-                >
-                  {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-2xl"></i> :
-                    isPlaying ? <i className="fas fa-pause text-3xl"></i> : <i className="fas fa-play text-3xl ml-1"></i>}
-                </button>
-
-                <div className="flex flex-col space-y-2">
-                  <div className="flex items-center space-x-3">
-                    <i className="fas fa-volume-high text-green-500/50 text-[10px]"></i>
-                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Receiver Gain: {Math.round(volume * 100)}%</span>
-                  </div>
-                  <input
-                    type="range" min="0" max="1" step="0.01" value={volume}
-                    onChange={(e) => setVolume(parseFloat(e.target.value))}
-                    className="w-40 h-1.5 bg-white/5 rounded-full appearance-none accent-green-500 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Engine Status Badge */}
-              <div className="text-right flex flex-col items-end opacity-40">
-                <span className="text-[6px] font-black text-white uppercase tracking-tighter">Receiver Protocol v4.0</span>
-                <span className="text-[7px] font-mono text-green-500 uppercase mt-1">Status: {status}</span>
-              </div>
+              <span className="text-[7px] font-mono text-green-600/40">{formatTime(duration)}</span>
             </div>
           </div>
         </div>
 
-        {/* Interaction Prompt (if not playing yet) */}
-        {!isPlaying && forcePlaying && (
-          <div className="px-6 py-3 bg-red-600/10 border border-red-500/30 rounded-2xl animate-bounce">
-            <p className="text-[8px] font-black text-red-500 uppercase tracking-widest flex items-center">
-              <i className="fas fa-satellite-dish mr-2"></i> Tap the Play Console to Tune in
+        {/* REFINED CONTROLS (OPTIMIZED HEIGHT) */}
+        <div className="flex items-center space-x-6 w-full justify-center pt-1">
+          <button
+            onClick={handlePlayPause}
+            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all border-4 ${isPlaying
+              ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/10'
+              : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/10 hover:bg-green-700'
+              }`}
+          >
+            {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-xl"></i> :
+              isPlaying ? <i className="fas fa-pause text-2xl"></i> : <i className="fas fa-play text-2xl ml-1"></i>}
+          </button>
+
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center space-x-2">
+              <i className="fas fa-volume-up text-green-600/40 text-[9px]"></i>
+              <span className="text-[7px] font-black text-green-900/40 uppercase tracking-widest">Gain: {Math.round(volume * 100)}%</span>
+            </div>
+            <input
+              type="range" min="0" max="1" step="0.01" value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              className="w-28 h-1 bg-green-100 rounded-full appearance-none accent-[#008751] cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* Errors & Prompts */}
+        {!isPlaying && forcePlaying && status !== 'LOADING' && (
+          <div className="px-4 py-2 bg-red-600/10 border border-red-500/20 rounded-xl animate-bounce">
+            <p className="text-[7px] font-black text-red-500 uppercase tracking-widest flex items-center">
+              <i className="fas fa-satellite-dish mr-2"></i> Tap to join live broadcast
             </p>
           </div>
         )}
 
         {errorMessage && (
-          <div className="bg-red-950/50 border border-red-500/50 p-4 rounded-2xl w-full">
-            <p className="text-[8px] font-black text-red-400 text-center uppercase leading-tight">{errorMessage}</p>
+          <div className="bg-red-50 border border-red-100 px-4 py-2 rounded-xl">
+            <p className="text-[7px] font-black text-red-600 text-center uppercase tracking-wide">{errorMessage}</p>
           </div>
         )}
       </div>
@@ -591,7 +581,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
           {forcePlaying && !isPlaying && status !== 'LOADING' && (
             <div className="absolute inset-x-0 -top-16 flex justify-center z-50 animate-bounce">
               <button
-                onClick={handlePlayPause}
+                onClick={() => { handlePlayPause(); if (!isExpanded) onExpandToggle?.(true); }}
                 className="bg-red-500 text-white px-6 py-3 rounded-full font-black text-[9px] uppercase tracking-widest shadow-2xl border-2 border-white/20 flex items-center space-x-2"
               >
                 <i className="fas fa-satellite-dish"></i>
