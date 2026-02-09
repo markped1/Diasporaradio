@@ -20,7 +20,28 @@ class SpeechService {
         return this.synth.getVoices();
     }
 
-    speak({ text, voiceName, onStart, onEnd, onError }: SpeechRequest) {
+    async speak({ text, voiceName, onStart, onEnd, onError }: SpeechRequest) {
+        // Preference 1: Puter.js AI TTS (Higher Quality)
+        if (typeof window !== 'undefined' && (window as any).puter?.ai?.txt2speech) {
+            try {
+                console.log("Using Puter AI TTS...");
+                const audio = await (window as any).puter.ai.txt2speech(text);
+                if (audio && audio.src) {
+                    onStart?.();
+                    const audioObj = new Audio(audio.src);
+                    audioObj.onended = () => onEnd?.();
+                    audioObj.onerror = (e) => onError?.(e);
+                    await audioObj.play();
+                } else {
+                    throw new Error("Puter TTS returned no audio source");
+                }
+                return;
+            } catch (err) {
+                console.warn("Puter AI TTS failed, falling back to Browser Native:", err);
+                // Fall through to native fallback
+            }
+        }
+
         if (!this.synth) {
             onError?.("Speech Synthesis not supported in this browser.");
             return;

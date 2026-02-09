@@ -1,5 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useBroadcast } from './context/BroadcastContext';
+import { useListenerAudio } from './hooks/useListenerAudio';
+import { radioEngine } from './core/RadioEngine';
+import { supabase } from './services/supabaseClient';
 import ListenerView from './components/ListenerView';
 import AdminView from './components/AdminView';
 import PasswordModal from './components/PasswordModal';
@@ -35,19 +39,20 @@ const App: React.FC = () => {
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
 
-  const [isRadioPlaying, setIsRadioPlaying] = useState(false);
-  const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
-  const [activeTrackUrl, setActiveTrackUrl] = useState<string | null>(null);
-  const [currentTrackName, setCurrentTrackName] = useState<string>('Live Stream');
-  const [isShuffle, setIsShuffle] = useState(true);
-  const [isDucking, setIsDucking] = useState(false);
-  const [duckingType, setDuckingType] = useState<'news' | 'jingle' | null>(null);
+  const { broadcast, syncStatus } = useBroadcast();
   const [hasInteracted, setHasInteracted] = useState(false);
+
+  // DRIVER: All listeners (including Admin) use this to hear audio based on global state
+  useListenerAudio(hasInteracted && role === UserRole.LISTENER);
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
   const [expandedMedia, setExpandedMedia] = useState<'radio' | 'video' | 'none'>('none');
 
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState('');
+  const [isShuffle, setIsShuffle] = useState(true);
+  const [isDucking, setIsDucking] = useState(false);
+  const [duckingType, setDuckingType] = useState<'news' | 'jingle' | null>(null);
 
   const aiAudioContextRef = useRef<AudioContext | null>(null);
   const isSyncingRef = useRef(false);
@@ -111,16 +116,11 @@ const App: React.FC = () => {
       setAudioPlaylist(processedMedia.filter(item => item.type === 'audio'));
       setAdminMessages(msg || []);
       setReports(rep || []);
-
-      if (activeTrackId) {
-        const activeTrack = processedMedia.find(t => t.id === activeTrackId);
-        if (activeTrack) setActiveTrackUrl(activeTrack.url);
-      }
     } catch (err: any) {
       console.error("Data fetch error", err);
       setInitError(err.message || "Failed to connect to the radio server. Check your connection or credentials.");
     }
-  }, [activeTrackId]);
+  }, []);
 
   const playRawPcm = useCallback(async (audioData: Uint8Array, type: 'news' | 'jingle' = 'news'): Promise<void> => {
     if (!audioData || audioData.byteLength < 100) return Promise.resolve();
@@ -277,160 +277,19 @@ const App: React.FC = () => {
     return () => clearInterval(heartbeat);
   }, [runScheduledBroadcast, role]);
 
-  const activeTrackIdRef = useRef<string | null>(null);
-  const isRadioPlayingRef = useRef<boolean>(false);
-
-  useEffect(() => {
-    activeTrackIdRef.current = activeTrackId;
-    isRadioPlayingRef.current = isRadioPlaying;
-  }, [activeTrackId, isRadioPlaying]);
-
-  // Midway Sync Logic (Supabase Realtime)
-  const handleSyncUpdate = useCallback((remoteState: MidwayState) => {
-    console.log("🔥 [App.tsx] Sync Update Received from Supabase:", {
-      id: remoteState.activeTrackId,
-      name: remoteState.activeTrackName,
-      playing: remoteState.isPlaying,
-      pulse: remoteState.broadcastPulse,
-      url: remoteState.activeTrackUrl
-    });
-
-    // 1. Sync Playback State
-    if (remoteState.isPlaying !== isRadioPlayingRef.current) {
-      console.log(`🎵 [App.tsx] State Change Detected: isPlaying ${isRadioPlayingRef.current} -> ${remoteState.isPlaying}`);
-      setIsRadioPlaying(remoteState.isPlaying);
-    }
-
-    // 2. Sync Folder Context
-    if (remoteState.activeFolder !== activeFolder) {
-      setActiveFolder(remoteState.activeFolder || null);
-    }
-
-    // NEW: Sync Newsroom State
-    if (remoteState.isNewsroomActive !== undefined) {
-      setIsNewsroomActive(remoteState.isNewsroomActive);
-      setNewsroomContent(remoteState.newsroomContent || null);
-    }
-
-    // 3. Sync Track Info
-    if (remoteState.activeTrackId !== activeTrackIdRef.current || remoteState.activeTrackName !== currentTrackName) {
-      if (remoteState.activeTrackUrl) {
-        setActiveTrackId(remoteState.activeTrackId);
-        setActiveTrackUrl(remoteState.activeTrackUrl);
-        setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
-        console.log(`🔗 [App.tsx] Direct URL Update: ${remoteState.activeTrackUrl}`);
-      } else {
-        // Fallback to registry lookups
-        let track = playlistRef.current.find(t => t.id === remoteState.activeTrackId);
-        if (!track && remoteState.shared_media) {
-          track = remoteState.shared_media.find(t => t.id === remoteState.activeTrackId);
-        }
-        if (track) {
-          setActiveTrackId(track.id);
-          setActiveTrackUrl(track.url);
-          setCurrentTrackName(cleanTrackName(track.name));
-        } else if (remoteState.activeTrackId === null) {
-          setActiveTrackId(null);
-          setActiveTrackUrl(DEFAULT_STREAM_URL || null);
-          setCurrentTrackName('Live Stream');
-        } else if (remoteState.activeTrackName) {
-          setActiveTrackId(remoteState.activeTrackId);
-          setActiveTrackUrl(DEFAULT_STREAM_URL || null);
-          setCurrentTrackName(cleanTrackName(remoteState.activeTrackName));
-        } else {
-          // If totally lost, at least don't block the UI
-          setActiveTrackUrl(null);
-        }
-      }
-    }
-
-    // 3. Sync News
-    if (remoteState.latest_news && remoteState.latest_news.length > 0) {
-      setNews(remoteState.latest_news);
-    }
-
-    // 4. Sync REAL-TIME Broadcasts
-    if (remoteState.activeBroadcast && remoteState.activeBroadcast.id !== lastBroadcastIdRef.current) {
-      lastBroadcastIdRef.current = remoteState.activeBroadcast.id;
-      const b = remoteState.activeBroadcast;
-      if (b.type === 'news') {
-        (async () => {
-          const intro = await getJingleAudio(JINGLE_1);
-          if (intro) await playRawPcm(intro, 'jingle');
-          const audio = await getNewsAudio(b.text);
-          if (audio) await playRawPcm(audio, 'news');
-          const outro = await getJingleAudio(JINGLE_2);
-          if (outro) await playRawPcm(outro, 'jingle');
-        })();
-      } else if (b.type === 'discussion') {
-        (async () => {
-          const intro = await getJingleAudio(JINGLE_1);
-          if (intro) await playRawPcm(intro, 'jingle');
-          const audio = await getDiscussionAudio(b.text);
-          if (audio) await playRawPcm(audio, 'news');
-          const outro = await getJingleAudio(JINGLE_2);
-          if (outro) await playRawPcm(outro, 'jingle');
-        })();
-      }
-    }
-
-    // 6. Sync Video
-    if (remoteState.activeVideoId && remoteState.activeVideoId !== activeVideoId) {
-      setActiveVideoId(remoteState.activeVideoId);
-      if (remoteState.activeVideoUrl) {
-        setActiveVideoUrl(remoteState.activeVideoUrl);
-      }
-    }
-
-    // 7. HYBRID SYNC: Force re-sync on pulse
-    if (remoteState.broadcastPulse && remoteState.broadcastPulse > lastProcessedPulseRef.current) {
-      lastProcessedPulseRef.current = remoteState.broadcastPulse;
-      console.log("New Broadcast Pulse - Triggering Data Refresh...");
-      fetchData();
-    }
-  }, [currentTrackName, cleanTrackName, fetchData, playRawPcm, activeFolder, activeVideoId]);
-
-  // Midway Sync Logic (Supabase Realtime)
-  useEffect(() => {
-    // Initial fetch to get the current state and AUTO-JOIN if broadcast is live
-    dbService.getMidwayState()
-      .then(remoteState => {
-        if (remoteState) {
-          handleSyncUpdate(remoteState);
-
-          // AUTO-SYNC FOR LISTENERS: If Admin is broadcasting, join immediately
-          if (role === UserRole.LISTENER && remoteState.isPlaying && remoteState.activeTrackUrl) {
-            console.log("Auto-joining live broadcast for listener");
-            setHasInteracted(true); // Enable audio playback
-          }
-        }
-      })
-      .catch(err => {
-        console.warn("Initial Midway sync failed:", err);
-      });
-
-    const subscription = dbService.subscribeToMidway((remoteState) => {
-      handleSyncUpdate(remoteState);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [handleSyncUpdate, role]);
-
   useEffect(() => {
     const handleInteraction = () => {
       if (!hasInteracted) {
         setHasInteracted(true);
-        // Force sync on first interaction
-        dbService.getMidwayState().then(state => {
-          if (state) handleSyncUpdate(state);
-        });
+        // Resuming context for AI DJs (news room)
+        if (aiAudioContextRef.current && aiAudioContextRef.current.state === 'suspended') {
+          aiAudioContextRef.current.resume();
+        }
       }
     };
     window.addEventListener('click', handleInteraction);
     return () => window.removeEventListener('click', handleInteraction);
-  }, [hasInteracted, handleSyncUpdate]);
+  }, [hasInteracted]);
 
   useEffect(() => {
     if (hasInteracted && pendingAudioRef.current) {
@@ -477,15 +336,10 @@ const App: React.FC = () => {
 
     if (playlist.length === 0) return;
 
-    const currentIndex = playlist.findIndex(t => t.id === activeTrackId);
+    const currentIndex = playlist.findIndex(t => t.id === broadcast?.activeTrackId);
     let nextIndex = isShuffle ? Math.floor(Math.random() * playlist.length) : (currentIndex + 1) % playlist.length;
     const track = playlist[nextIndex];
     if (track) {
-      // IMMEDIATE FEEDBACK for the user performing the action
-      setActiveTrackId(track.id);
-      setActiveTrackUrl(track.url);
-      setCurrentTrackName(cleanTrackName(track.name));
-      setIsRadioPlaying(true);
       setHasInteracted(true);
 
       if (role === UserRole.ADMIN) {
@@ -506,7 +360,7 @@ const App: React.FC = () => {
         });
       }
     }
-  }, [activeTrackId, isShuffle, activeFolder, role]);
+  }, [broadcast?.activeTrackId, isShuffle, activeFolder, role, sponsoredMedia]);
 
   const handlePlayAll = async () => {
     setHasInteracted(true);
@@ -514,21 +368,18 @@ const App: React.FC = () => {
 
     const track = isShuffle ? audioPlaylist[Math.floor(Math.random() * audioPlaylist.length)] : audioPlaylist[0];
 
-    // IMMEDIATE FEEDBACK
-    setActiveTrackId(track.id);
-    setActiveTrackUrl(track.url);
-    setCurrentTrackName(cleanTrackName(track.name));
-    setIsRadioPlaying(true);
+    if (role === UserRole.ADMIN) {
+      const isLocalBlob = track.url.startsWith('blob:') || track.url.startsWith('data:');
 
-    const isLocalBlob = track.url.startsWith('blob:') || track.url.startsWith('data:');
-
-    // RELAY TO MIDWAY
-    await dbService.updateMidwayState({
-      activeTrackId: track.id,
-      activeTrackName: cleanTrackName(track.name),
-      activeTrackUrl: isLocalBlob ? null : track.url,
-      isPlaying: true
-    });
+      // RELAY TO MIDWAY
+      await dbService.updateMidwayState({
+        activeTrackId: track.id,
+        activeTrackName: cleanTrackName(track.name),
+        activeTrackUrl: isLocalBlob ? null : track.url,
+        isPlaying: true,
+        broadcastPulse: Date.now()
+      });
+    }
   };
 
   const handleTriggerNewsroom = async (content: string) => {
@@ -672,10 +523,6 @@ const App: React.FC = () => {
 
     // 3. Update local state
     setActiveFolder(folder);
-    setActiveTrackId(firstTrack.id);
-    setActiveTrackUrl(firstTrack.url);
-    setCurrentTrackName(cleanTrackName(firstTrack.name));
-    setIsRadioPlaying(true);
     setHasInteracted(true);
 
     // 4. Update GLOBAL state
@@ -734,20 +581,12 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f0fff4] text-[#008751] flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden border-x border-green-100/30">
-      <header className="sticky top-0 z-40 bg-white shadow-md flex items-stretch h-14 overflow-hidden border-b border-green-50">
-        {/* LEFT GREEN STRIPE */}
-        <div className="w-12 bg-[#008751] flex items-center justify-center space-x-0.5 px-1 relative">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className={`strand strand-${i} ${isRadioPlaying ? '' : 'paused'}`}></div>
-          ))}
-          <div className="absolute inset-0 bg-green-900/10 pointer-events-none"></div>
-        </div>
-
-        {/* CENTER WHITE SECTION */}
-        <div className="flex-grow bg-white flex flex-col items-center justify-center px-4 relative min-w-0">
+      <header className="sticky top-0 z-40 bg-white shadow-md flex items-center h-16 overflow-hidden border-b border-green-50 px-4">
+        {/* CENTERED BRANDING SECTION */}
+        <div className="flex-grow flex flex-col items-center justify-center relative min-w-0">
           <div className="flex items-center space-x-2">
-            <h1 className="text-[13px] font-black tracking-[0.2em] text-[#008751] uppercase italic whitespace-nowrap">NDR RADIO</h1>
-            {isRadioPlaying && (
+            <h1 className="text-[11px] font-black tracking-[0.15em] text-[#008751] uppercase italic whitespace-nowrap">Nigeria Diaspora Radio Tv (NDRTV)</h1>
+            {broadcast?.isPlaying && (
               <span className="flex space-x-0.5 items-end h-3">
                 <span className="w-0.5 bg-red-500 animate-pulse h-1"></span>
                 <span className="w-0.5 bg-red-500 animate-pulse h-2" style={{ animationDelay: '0.2s' }}></span>
@@ -755,11 +594,16 @@ const App: React.FC = () => {
               </span>
             )}
           </div>
-          <p className="text-[5.5px] text-green-900/40 font-black uppercase tracking-[0.4em] mt-0.5">Diaspora Relay Network</p>
+          <p className="text-[6px] text-green-900/40 font-black uppercase tracking-[0.4em] mt-0.5">Midway Relay Hub &bull; Diaspora Network</p>
+          <p className="text-[5px] text-gray-400 font-bold uppercase tracking-widest mt-1">designed by thompson obosa</p>
 
-          {/* STATUS INDICATORS */}
-          <div className="absolute right-2 top-1 flex flex-col items-end space-y-0.5">
-            {isRadioPlaying && <span className="text-[5px] font-black uppercase text-red-500 bg-red-50 px-1 rounded-sm border border-red-100 flex items-center"><i className="fas fa-circle text-[4px] mr-1 animate-ping"></i> LIVE</span>}
+          {/* STATUS INDICATORS (ABSOLUTE RIGHT) */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-end space-y-1">
+            <div className="flex items-center space-x-1 mb-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'SUBSCRIBED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+              <span className="text-[5px] font-black uppercase text-green-950/40">Sync: {syncStatus}</span>
+            </div>
+            {broadcast?.isPlaying && <span className="text-[5px] font-black uppercase text-red-500 bg-red-50 px-1 rounded-sm border border-red-100 flex items-center shadow-sm"><i className="fas fa-satellite-dish text-[4.5px] mr-1"></i> RELAYING</span>}
             <button
               onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
               className="text-[6px] font-black uppercase text-green-900/30 hover:text-green-900 transition-colors bg-green-50/50 hover:bg-green-100 px-1.5 py-0.5 rounded border border-green-100/50"
@@ -768,22 +612,12 @@ const App: React.FC = () => {
             </button>
           </div>
         </div>
-
-        {/* RIGHT GREEN STRIPE */}
-        <div className="w-12 bg-[#008751] flex items-center justify-center space-x-0.5 px-1 relative">
-          {[5, 4, 3, 2, 1].map(i => (
-            <div key={i} className={`strand strand-${i} ${isRadioPlaying ? '' : 'paused'}`}></div>
-          ))}
-          <div className="absolute inset-0 bg-green-900/10 pointer-events-none"></div>
-        </div>
       </header>
 
       <main className="flex-grow pt-1 px-1.5">
         <RadioPlayer
           onStateChange={async (playing) => {
-            setIsRadioPlaying(playing);
             if (role === UserRole.ADMIN) {
-              // Admin interaction with the player UI should sync to listeners
               await dbService.updateMidwayState({
                 isPlaying: playing,
                 broadcastPulse: Date.now(),
@@ -791,9 +625,9 @@ const App: React.FC = () => {
               });
             }
           }}
-          activeTrackUrl={activeTrackUrl}
-          currentTrackName={currentTrackName}
-          forcePlaying={isRadioPlaying}
+          activeTrackUrl={broadcast?.activeTrackUrl || null}
+          currentTrackName={broadcast?.activeTrackName || 'Live Stream'}
+          forcePlaying={broadcast?.isPlaying || false}
           onTrackEnded={handlePlayNext}
           onPeakReached={handlePeakReached}
           isDucking={isDucking}
@@ -802,16 +636,7 @@ const App: React.FC = () => {
           activeFolder={activeFolder}
           isExpanded={expandedMedia === 'radio'}
           onExpandToggle={(expanded) => setExpandedMedia(expanded ? 'radio' : 'none')}
-          onInteract={() => {
-            setHasInteracted(true);
-            // CATCH-UP LOGIC: Force a full sync update from the cloud immediately
-            dbService.getMidwayState().then(state => {
-              if (state) {
-                console.log("Listener Catch-up Triggered via Interaction");
-                handleSyncUpdate(state);
-              }
-            });
-          }}
+          onInteract={() => setHasInteracted(true)}
         />
 
         {/* RELOCATED NEWS TICKER (UNDER PROGRESSION TAB) */}
@@ -826,7 +651,7 @@ const App: React.FC = () => {
             ))}
             {news.length === 0 && (
               <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
-                {activeFolder ? `REELING: ${activeFolder}` : (currentTrackName || 'NDR RADIO')}
+                {activeFolder ? `REELING: ${activeFolder}` : (broadcast?.activeTrackName || 'NDR RADIO')}
               </h4>
             )}
           </div>
@@ -834,50 +659,68 @@ const App: React.FC = () => {
 
         {role === UserRole.LISTENER ? (
           <ListenerView
-            news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
+            news={news} onStateChange={() => { }} isRadioPlaying={broadcast?.isPlaying || false}
             tvPlaylist={tvPlaylist}
             tvAdverts={tvAdverts}
-            activeTrackUrl={activeTrackUrl}
-            currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
-            onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
+            activeTrackUrl={broadcast?.activeTrackUrl || null}
+            currentTrackName={broadcast?.activeTrackName || 'NDR RADIO'} adminMessages={adminMessages} reports={reports}
+            onPlayTrack={(t) => {
+              // Listeners can't update the global track, this is likely legacy or local preview
+              setHasInteracted(true);
+            }}
             isNewsroomActive={isNewsroomActive}
             newsroomContent={newsroomContent}
             expandedMedia={expandedMedia}
             setExpandedMedia={setExpandedMedia}
             activeVideoId={activeVideoId}
             activeVideoUrl={activeVideoUrl}
+            syncStatus={syncStatus}
           />
         ) : (
           <AdminView
             onRefreshData={fetchData} logs={logs}
             onPlayTrack={async (t) => {
-              // IMMEDIATE FEEDBACK for Admin (Uses their preferred local/cloud URL)
+              // 1. IMMEDIATE FEEDBACK for Admin
               setActiveTrackId(t.id);
               setActiveTrackUrl(t.url);
               setCurrentTrackName(cleanTrackName(t.name));
               setIsRadioPlaying(true);
               setHasInteracted(true);
 
-              const isLocalBlob = t.url.startsWith('blob:') || t.url.startsWith('data:');
-              // Ensure we broadcast the CLOUD URL if available, even if playing locally
-              // Search in both audioPlaylist and sponsoredMedia
-              const allMedia = [...playlistRef.current, ...sponsoredMedia];
-              const trackInfo = allMedia.find(m => m.id === t.id);
-              const broadcastUrl = trackInfo?.url || (isLocalBlob ? null : t.url);
+              try {
+                let broadcastUrl = t.url;
+                const isLocal = t.url.startsWith('blob:') || t.url.startsWith('data:');
 
-              await dbService.updateMidwayState({
-                activeTrackId: t.id,
-                activeTrackName: cleanTrackName(t.name),
-                activeTrackUrl: broadcastUrl,
-                isPlaying: true,
-                broadcastPulse: Date.now()
-              });
+                if (isLocal && t.file && supabase) {
+                  setStatusMsg(`Uploading ${t.name} to Cloud...`);
+                  const cloudUrl = await dbService.uploadMedia(t.file as File);
+                  if (cloudUrl) {
+                    broadcastUrl = cloudUrl;
+                    console.log("☁️ File uploaded to Supabase Storage:", cloudUrl);
+                    // Update local reference so we don't upload again
+                    await dbService.addMedia({ ...t, url: cloudUrl });
+                  }
+                }
+
+                await dbService.updateMidwayState({
+                  activeTrackId: t.id,
+                  activeTrackName: cleanTrackName(t.name),
+                  activeTrackUrl: broadcastUrl,
+                  isPlaying: true,
+                  broadcastPulse: Date.now()
+                });
+                setStatusMsg("");
+              } catch (err) {
+                console.error("Cloud Broadcast Sync failed:", err);
+                setStatusMsg("Global Sync Failed (Local File).");
+                setTimeout(() => setStatusMsg(""), 3000);
+              }
             }}
-            isRadioPlaying={isRadioPlaying}
+            isRadioPlaying={broadcast?.isPlaying || false}
             onPlayFolder={handlePlayFolder}
             activeFolder={activeFolder}
             onToggleRadio={async () => {
-              const newState = !isRadioPlaying;
+              const newState = !broadcast?.isPlaying;
 
               if (newState) {
                 // 1. STARTING MASTER BROADCAST (Global Mode)
@@ -885,9 +728,9 @@ const App: React.FC = () => {
                 setActiveFolder(null); // Clear local folder restriction
 
                 // 2. Ensure a track is ready if none is selected
-                let targetTrackId = activeTrackId;
-                let targetTrackUrl = activeTrackUrl;
-                let targetTrackName = currentTrackName;
+                let targetTrackId = broadcast?.activeTrackId;
+                let targetTrackUrl = broadcast?.activeTrackUrl;
+                let targetTrackName = broadcast?.activeTrackName || 'Live Stream';
 
                 // Use playlistRef to get latest tracks
                 const globalPlaylist = playlistRef.current;
@@ -898,38 +741,42 @@ const App: React.FC = () => {
                   targetTrackId = randomTrack.id;
                   targetTrackUrl = randomTrack.url;
                   targetTrackName = cleanTrackName(randomTrack.name);
-
-                  // Update local immediately
-                  setActiveTrackId(targetTrackId);
-                  setActiveTrackUrl(targetTrackUrl);
-                  setCurrentTrackName(targetTrackName);
                 }
 
-                setIsRadioPlaying(true);
                 setHasInteracted(true);
 
-                // 3. Resolve Broadcast URL
-                // Find Cloud URL if available for the track
-                const allMedia = [...globalPlaylist, ...sponsoredMedia];
-                const trackInfo = allMedia.find(m => m.id === targetTrackId);
-                const isLocalBlob = targetTrackUrl?.startsWith('blob:') || targetTrackUrl?.startsWith('data:');
-                const broadcastUrl = trackInfo?.url || (isLocalBlob ? null : targetTrackUrl);
+                // 3. Resolve Broadcast URL & Handshake Cloud
+                try {
+                  const allMedia = [...globalPlaylist, ...sponsoredMedia];
+                  const trackInfo = allMedia.find(m => m.id === targetTrackId);
+                  let broadcastUrl = targetTrackUrl || '';
 
-                await dbService.updateMidwayState({
-                  isPlaying: true,
-                  activeFolder: null, // CLEAR FOLDER restriction globally
-                  activeTrackId: targetTrackId,
-                  activeTrackName: targetTrackName,
-                  activeTrackUrl: broadcastUrl,
-                  broadcastPulse: Date.now(),
-                  lastEvent: { type: 'PLAY', timestamp: Date.now() }
-                });
+                  if (targetTrackUrl?.startsWith('blob:') && trackInfo?.file && supabase) {
+                    setStatusMsg("Syncing Studio to Cloud...");
+                    const cloudUrl = await dbService.uploadMedia(trackInfo.file as File);
+                    if (cloudUrl) {
+                      broadcastUrl = cloudUrl;
+                      await dbService.addMedia({ ...trackInfo, url: cloudUrl });
+                    }
+                  }
+
+                  await dbService.updateMidwayState({
+                    isPlaying: true,
+                    activeFolder: null, // CLEAR FOLDER restriction globally
+                    activeTrackId: targetTrackId || 'default',
+                    activeTrackName: targetTrackName || 'Live Stream',
+                    activeTrackUrl: broadcastUrl,
+                    broadcastPulse: Date.now(),
+                    lastEvent: { type: 'PLAY', timestamp: Date.now() }
+                  });
+                  setStatusMsg("");
+                } catch (e) {
+                  console.error("Master Sync failed:", e);
+                }
 
               } else {
                 // STOPPING BROADCAST
-                setIsRadioPlaying(false);
                 setHasInteracted(true);
-
                 await dbService.updateMidwayState({
                   isPlaying: false,
                   broadcastPulse: Date.now(),
@@ -937,7 +784,7 @@ const App: React.FC = () => {
                 });
               }
             }}
-            currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
+            currentTrackName={broadcast?.activeTrackName || 'NDR RADIO'} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
             onPlayAll={handlePlayAll} onSkipNext={handlePlayNext}
             onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
             news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
@@ -950,18 +797,37 @@ const App: React.FC = () => {
             newsroomContent={newsroomContent}
             onEndNewsroom={handleEndNewsroom}
             onPlayVideo={async (v) => {
+              // 1. IMMEDIATE
               setActiveVideoId(v.id);
               setActiveVideoUrl(v.url);
+
               if (role === UserRole.ADMIN) {
-                await dbService.updateMidwayState({
-                  activeVideoId: v.id,
-                  activeVideoUrl: v.url,
-                  broadcastPulse: Date.now()
-                });
+                try {
+                  let broadcastUrl = v.url;
+                  if (v.url.startsWith('blob:') && v.file && supabase) {
+                    setStatusMsg("Uploading Video to Cloud...");
+                    const cloudUrl = await dbService.uploadMedia(v.file as File);
+                    if (cloudUrl) {
+                      broadcastUrl = cloudUrl;
+                      await dbService.addMedia({ ...v, url: cloudUrl });
+                    }
+                  }
+
+                  await dbService.updateMidwayState({
+                    activeVideoId: v.id,
+                    activeVideoUrl: broadcastUrl,
+                    broadcastPulse: Date.now()
+                  });
+                  setStatusMsg("");
+                } catch (e) {
+                  console.error("Video Cloud Sync failed:", e);
+                  setStatusMsg("Video Sync Error.");
+                }
               }
             }}
             activeVideoId={activeVideoId}
             activeVideoUrl={activeVideoUrl}
+            onStatusUpdate={setStatusMsg}
           />
         )}
       </main>

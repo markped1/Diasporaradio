@@ -142,6 +142,9 @@ const TVPlayer: React.FC<TVPlayerProps> = ({
                     onPause={() => setIsPlaying(false)}
                     onEnded={onVideoEnd}
                     poster="https://via.placeholder.com/640x360.png?text=NDRTV+Signal+Offline"
+                    playsInline
+                    webkit-playsinline="true"
+                    muted={!isPlaying}
                 />
 
                 {/* TV BRANDING OVERLAY */}

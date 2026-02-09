@@ -370,12 +370,14 @@ class DBService {
     return data ? JSON.parse(data) : [];
   }
 
-  subscribeToMidway(onUpdate: (state: MidwayState) => void) {
+  subscribeToMidway(onUpdate: (state: MidwayState) => void, onStatus?: (status: string) => void) {
     if (!supabase) {
       console.warn("Supabase not configured. Realtime subscription skipped.");
+      onStatus?.('DISCONNECTED');
       return { unsubscribe: () => { } };
     }
 
+    onStatus?.('CONNECTING');
     const channel = supabase
       .channel('midway_changes')
       .on(
@@ -386,7 +388,14 @@ class DBService {
           if (payload.new) onUpdate(payload.new as MidwayState);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("📡 [dbService] Realtime Status:", status);
+        onStatus?.(status);
+
+        if (status === 'CHANNEL_ERROR') {
+          console.error("📡 [dbService] Realtime Channel Error - check if replication is enabled for midway_state");
+        }
+      });
 
     return {
       unsubscribe: () => {

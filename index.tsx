@@ -3,6 +3,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
+import { BroadcastProvider } from './context/BroadcastContext';
 
 // Basic error catcher to avoid the "Blank Green Screen"
 window.onerror = function (msg, url, lineNo, columnNo, error) {
@@ -32,7 +33,9 @@ const root = createRoot(rootElement);
 try {
   root.render(
     <React.StrictMode>
-      <App />
+      <BroadcastProvider>
+        <App />
+      </BroadcastProvider>
     </React.StrictMode>
   );
 } catch (e: any) {

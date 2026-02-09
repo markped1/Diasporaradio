@@ -22,6 +22,7 @@ interface ListenerViewProps {
   setExpandedMedia: (val: 'radio' | 'video' | 'none') => void;
   activeVideoId?: string | null;
   activeVideoUrl?: string | null;
+  syncStatus?: string;
 }
 
 const ListenerView: React.FC<ListenerViewProps> = ({
@@ -40,7 +41,8 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   expandedMedia,
   setExpandedMedia,
   activeVideoId,
-  activeVideoUrl
+  activeVideoUrl,
+  syncStatus = 'SYNCING'
 }) => {
   const [location, setLocation] = useState<string>('Syncing...');
   const [localTime, setLocalTime] = useState<string>('');
@@ -111,7 +113,13 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       <div className="flex justify-between items-center bg-white p-2 rounded-xl border border-green-100 shadow-sm relative overflow-hidden">
         <div className="flex flex-col z-10">
           <span className="text-[6px] font-black uppercase tracking-widest text-green-600">{location}</span>
-          <span className="text-[6px] font-mono text-green-900 font-black">{localTime}</span>
+          <div className="flex items-center space-x-2">
+            <span className="text-[6px] font-mono text-green-900 font-black">{localTime}</span>
+            <div className="flex items-center space-x-1 border-l border-green-100 pl-2">
+              <span className={`w-1 h-1 rounded-full ${syncStatus === 'SUBSCRIBED' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+              <span className="text-[5px] font-black text-green-900/40 uppercase">Studio {syncStatus === 'SUBSCRIBED' ? 'Live' : 'Off'}</span>
+            </div>
+          </div>
         </div>
 
         <button

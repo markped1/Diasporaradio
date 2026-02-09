@@ -1,5 +1,7 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { radioEngine } from '../core/RadioEngine';
+import { useBroadcast } from '../context/BroadcastContext';
 import { DEFAULT_STREAM_URL } from '../constants';
 import Logo from './Logo';
 
@@ -22,8 +24,8 @@ interface RadioPlayerProps {
 
 const RadioPlayer: React.FC<RadioPlayerProps> = ({
   onStateChange,
-  activeTrackUrl,
-  currentTrackName = 'Live Stream',
+  activeTrackUrl: propTrackUrl,
+  currentTrackName: propTrackName = 'Live Stream',
   forcePlaying = false,
   onTrackEnded,
   onPeakReached,
@@ -35,6 +37,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   isExpanded = false,
   onExpandToggle
 }) => {
+  const { broadcast } = useBroadcast();
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1.0);
   const [status, setStatus] = useState<'IDLE' | 'LOADING' | 'PLAYING' | 'ERROR'>('IDLE');
@@ -42,7 +45,6 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -53,7 +55,6 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   const onTrackEndedRef = useRef(onTrackEnded);
   const onPeakReachedRef = useRef(onPeakReached);
   const statusRef = useRef<'IDLE' | 'LOADING' | 'PLAYING' | 'ERROR'>('IDLE');
-  const volumeRef = useRef(volume);
 
   useEffect(() => {
     onTrackEndedRef.current = onTrackEnded;
@@ -64,334 +65,84 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     statusRef.current = status;
   }, [status]);
 
+  // Sync state from BroadcastContext
+  const activeTrackUrl = broadcast?.activeTrackUrl || null;
+  const currentTrackName = broadcast?.activeTrackName || propTrackName;
+
+  // Initialize Audio Engine Callbacks
   useEffect(() => {
-    volumeRef.current = volume;
-  }, [volume]);
+    radioEngine.setStatusCallback((newStatus) => {
+      setStatus(newStatus);
+      if (newStatus === 'PLAYING') setIsPlaying(true);
+      if (newStatus === 'IDLE' || newStatus === 'ERROR') setIsPlaying(false);
+      if (newStatus === 'ERROR') setErrorMessage('Tap to Retry');
+    });
 
-  const initAudioContext = () => {
-    try {
-      if (!audioRef.current) return;
-
-      // Don't create audio context for live streams initially
-      // Some streams have issues with MediaElementSource
-      if (isStreamRef.current) return;
-
-      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-
-      const ctx = audioContextRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(console.warn);
-      }
-
-      if (!gainNodeRef.current) {
-        const gain = ctx.createGain();
-        gain.connect(ctx.destination);
-        gainNodeRef.current = gain;
-      }
-
-      if (!sourceRef.current) {
-        try {
-          sourceRef.current = ctx.createMediaElementSource(audioRef.current);
-          const newAnalyser = ctx.createAnalyser();
-          newAnalyser.fftSize = 256;
-
-          sourceRef.current.connect(newAnalyser);
-          newAnalyser.connect(gainNodeRef.current!);
-          setAnalyser(newAnalyser);
-        } catch (err) {
-          console.warn("MediaElementSource creation failed:", err);
-          // Continue without visualizer for streams
-        }
-      }
-    } catch (e) {
-      console.error("Audio Initialization Failure:", e);
-    }
-  };
-
-  useEffect(() => {
-    const audio = new Audio();
-    audioRef.current = audio;
-
-    const handlePlay = () => {
-      console.log("▶️ [RadioPlayer] Play called");
-      setStatus('PLAYING');
-      setIsPlaying(true);
-      onStateChange(true);
-      setErrorMessage('');
-    };
-
-    const handlePause = () => {
-      setStatus('IDLE');
-      setIsPlaying(false);
-      onStateChange(false);
-    };
-
-    const handleError = (e: Event) => {
-      const target = e.target as HTMLAudioElement;
-      let message = 'Playback error';
-
-      if (target.error) {
-        switch (target.error.code) {
-          case MediaError.MEDIA_ERR_ABORTED:
-            message = 'Playback aborted';
-            break;
-          case MediaError.MEDIA_ERR_NETWORK:
-            message = 'Network error - Check your connection';
-            break;
-          case MediaError.MEDIA_ERR_DECODE:
-            message = 'Audio format not supported';
-            break;
-          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            message = 'Stream URL not accessible or invalid';
-            break;
-        }
-      }
-
-      console.error("❌ [RadioPlayer] Audio Playback Error:", message, target.error);
-
-      // CORS FALLBACK: If source not supported and we have crossOrigin enabled, try disabling it
-      if (target.error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED && target.crossOrigin === 'anonymous') {
-        console.warn("CORS/Source error detected - Attempting fallback without anonymous crossOrigin");
-        target.removeAttribute('crossorigin');
-        const currentSrc = target.src;
-        target.src = ''; // Force reset
-        target.load();
-        target.src = currentSrc;
-        target.play().catch(err => console.error("Fallback play failed:", err));
-        return; // Don't set error state yet
-      }
-
-      setErrorMessage(message);
-      setStatus('ERROR');
-      setIsPlaying(false);
-      onStateChange(false);
-    };
-
-    const handleCanPlay = () => {
-      console.log("Stream ready to play");
-      if (statusRef.current === 'LOADING') {
-        setStatus('IDLE');
-      }
-    };
-
-    const handleLoadStart = () => {
-      console.log("Loading stream...");
-      setStatus('LOADING');
-      // Reset peak trigger for new track
-      hasPeakTriggeredRef.current = false;
-    };
-
-    const handleTimeUpdate = () => {
-      if (!audioRef.current) return;
-      const cur = audioRef.current.currentTime;
-      const dur = audioRef.current.duration;
-      setCurrentTime(cur);
-
-      // Peak Insertion Logic (Midway of song)
-      if (dur > 30 && !hasPeakTriggeredRef.current && cur >= dur / 2) {
-        hasPeakTriggeredRef.current = true;
-        onPeakReachedRef.current?.();
-      }
-    };
-
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('error', handleError);
-    audio.addEventListener('waiting', () => setStatus('LOADING'));
-    audio.addEventListener('playing', handlePlay);
-    audio.addEventListener('ended', () => onTrackEndedRef.current?.());
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
-    audio.addEventListener('canplay', handleCanPlay);
-    audio.addEventListener('loadstart', handleLoadStart);
-
-    const targetSrc = activeTrackUrl;
-    if (targetSrc) {
-      isStreamRef.current = !targetSrc.startsWith('blob:') && !targetSrc.startsWith('data:');
-
-      // Use 'anonymous' for cloud URLs to allow Web Audio API processing
-      if (targetSrc.startsWith('blob:') || targetSrc.startsWith('data:')) {
-        audio.crossOrigin = null;
-      } else {
-        audio.crossOrigin = 'anonymous';
-      }
-
-      audio.src = targetSrc;
-      console.log(`🔗 [RadioPlayer] Setting Audio Source: ${targetSrc}`);
-      audio.preload = 'none';
-    }
+    const timer = setInterval(() => {
+      setCurrentTime(radioEngine.getCurrentTime());
+      setDuration(radioEngine.getDuration());
+    }, 1000);
 
     return () => {
-      audio.pause();
-      audio.src = "";
-      audio.removeAttribute('src');
-      audioRef.current = null;
+      clearInterval(timer);
+      radioEngine.setStatusCallback(() => { });
     };
   }, []);
 
+  // Sync Volume
   useEffect(() => {
-    if (audioRef.current) {
-      const targetSrc = activeTrackUrl;
-      if (targetSrc && audioRef.current.src !== targetSrc) {
-        const isLocal = targetSrc.startsWith('blob:') || targetSrc.startsWith('data:');
-        isStreamRef.current = !isLocal;
+    radioEngine.setVolume(volume);
+  }, [volume]);
 
-        // Use 'anonymous' for cloud URLs to allow Web Audio API processing
-        if (isLocal) {
-          audioRef.current.crossOrigin = null;
-        } else {
-          audioRef.current.crossOrigin = 'anonymous';
-        }
-
-        audioRef.current.src = targetSrc;
-        audioRef.current.load();
-
-        if (isPlaying || forcePlaying) {
-          // ALWAYS attempt to init audio context to unblock browser audio and enable gain/analyzer
-          initAudioContext();
-
-          audioRef.current.play().catch(err => {
-            console.warn("Autoplay blocked or stream error:", err);
-            setStatus('IDLE');
-          });
-        }
-      }
-    }
-  }, [activeTrackUrl]);
-
+  // Handle Ducking
   useEffect(() => {
-    if (audioRef.current) {
-      if (forcePlaying && audioRef.current.paused) {
-        if (!activeTrackUrl) {
-          console.warn("Force playing requested but no URL - Resetting to IDLE");
-          setStatus('IDLE');
-          setIsPlaying(false); // Ensure state is synced
-          return;
-        }
-        // ALWAYS attempt to init audio context to unblock browser audio and enable gain/analyzer
-        initAudioContext();
-
-        audioRef.current.play().catch((err) => {
-          console.error("Audio Engine Play Failure:", err.message, err);
-          setStatus('ERROR');
-          setErrorMessage(`Playback Blocked: Tap to Unmute`);
-        });
-      } else if (!forcePlaying && !audioRef.current.paused) {
-        audioRef.current.pause();
-        setStatus('IDLE');
-      }
-    }
-  }, [forcePlaying]);
-
-  useEffect(() => {
-    let watchDog: number;
-    if (status === 'LOADING') {
-      watchDog = window.setTimeout(() => {
-        if (statusRef.current === 'LOADING') {
-          console.warn("Loading watchdog triggered - Resetting player");
-          setStatus('IDLE');
-          setErrorMessage('Finding signal... Tap Play to retry');
-        }
-      }, 10000); // 10s timeout
-    }
-    return () => clearTimeout(watchDog);
-  }, [status]);
-
-  useEffect(() => {
-    if (!audioRef.current) return;
-
     if (isDucking) {
-      if (duckingType === 'jingle') {
-        // JINGLE DUCKING: Reduce volume to 30% instead of full stop
-        if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
-          gainNodeRef.current.gain.setTargetAtTime(volumeRef.current * 0.3, audioContextRef.current.currentTime, 0.4);
-        } else {
-          audioRef.current.volume = volumeRef.current * 0.3;
-        }
-        // If it was playing, keep it playing (just quieter)
-        if (!isStreamRef.current && isPlaying && audioRef.current.paused) {
-          audioRef.current.play().catch(console.warn);
-        }
-      } else {
-        // BROADCAST/NEWS: MUTE for clarity (Don't pause, so we don't trigger 'pause' events and clear state)
-        if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
-          gainNodeRef.current.gain.setTargetAtTime(0, audioContextRef.current.currentTime, 0.1);
-        } else {
-          audioRef.current.volume = 0;
-        }
-      }
+      radioEngine.setVolume(volume * 0.3);
     } else {
-      // RESUME / RESTORE VOLUME
-      const targetVolume = volumeRef.current;
-      if (gainNodeRef.current && audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        gainNodeRef.current.gain.setTargetAtTime(targetVolume, audioContextRef.current.currentTime, 0.5);
-      } else {
-        audioRef.current.volume = targetVolume;
-      }
-
-      // If it's a paused local track that should be playing, resume it
-      if (!isStreamRef.current && isPlaying && audioRef.current.paused) {
-        audioRef.current.play().catch(err => console.warn("Auto-resume failed:", err));
-      }
+      radioEngine.setVolume(volume);
     }
-  }, [isDucking, duckingType, volume, isPlaying]);
+  }, [isDucking, volume]);
 
-  // Removed local statusRef here as it's now at top level
+  // Visualizer Setup
+  useEffect(() => {
+    const audio = radioEngine.getAudioElement();
+    if (!audio || analyser) return;
+
+    const initAnalyser = () => {
+      try {
+        if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        const ctx = audioContextRef.current;
+
+        if (!sourceRef.current) {
+          sourceRef.current = ctx.createMediaElementSource(audio);
+          const newAnalyser = ctx.createAnalyser();
+          newAnalyser.fftSize = 256;
+
+          if (!gainNodeRef.current) {
+            gainNodeRef.current = ctx.createGain();
+            gainNodeRef.current.connect(ctx.destination);
+          }
+
+          sourceRef.current.connect(newAnalyser);
+          newAnalyser.connect(gainNodeRef.current);
+          setAnalyser(newAnalyser);
+        }
+      } catch (err) {
+        console.warn("Visualizer init failed (common for streams):", err);
+      }
+    };
+
+    if (isPlaying) initAnalyser();
+  }, [isPlaying, analyser]);
 
   const handlePlayPause = async () => {
-    if (!audioRef.current) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
+    if (uiMode === 'listener') {
+      onInteract?.(); // This sets hasInteracted in App.tsx -> triggers useListenerAudio
     } else {
-      // NUCLEAR RESET: Clear previous errors and force a fresh load
-      setErrorMessage('');
-      setStatus('LOADING');
-
-      const targetSrc = activeTrackUrl;
-      if (!targetSrc) {
-        setStatus('IDLE');
-        setErrorMessage('');
-        return;
-      }
-
-      // Force refresh the source to break any "stuck" state
-      audioRef.current.src = "";
-      audioRef.current.load();
-      audioRef.current.src = targetSrc;
-
-      // Watchdog: Even shorter 4s reset
-      const timeoutId = setTimeout(() => {
-        if (statusRef.current === 'LOADING') {
-          console.warn("Watchdog: Loading took too long. Resetting.");
-          setStatus('IDLE');
-          setErrorMessage('Connection slow. Try Reconnecting or Refreshing.');
-        }
-      }, 4000);
-
-      try {
-        if (!isStreamRef.current) {
-          initAudioContext();
-        } else if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          audioContextRef.current.resume().catch(console.warn);
-        }
-
-        await audioRef.current.play();
-        onInteract?.();
-        clearTimeout(timeoutId);
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        console.error("Play error:", err);
-        setStatus('ERROR');
-        // Vercel/Auth detection
-        if (err.message?.includes('401') || err.message?.includes('authentication')) {
-          setErrorMessage('Vercel Authentication is blocking player. Disable it in Vercel Settings.');
-        } else {
-          setErrorMessage('Tap to Play again');
-        }
-      }
+      const nextState = !broadcast?.isPlaying;
+      onStateChange(nextState);
     }
   };
 
@@ -402,9 +153,9 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (uiMode === 'headless') return null;
-
   const toggleExpand = () => onExpandToggle?.(!isExpanded);
+
+  if (uiMode === 'headless') return null;
 
   // 🎧 LISTENER CONSOLE UI (REFINED LOGO + DISPLAY)
   if (uiMode === 'listener') {
@@ -579,13 +330,14 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         <div className="flex items-center justify-between w-full px-2 relative">
           {/* JOIN BROADCAST OVERLAY (FOR LISTENERS) */}
           {forcePlaying && !isPlaying && status !== 'LOADING' && (
-            <div className="absolute inset-x-0 -top-16 flex justify-center z-50 animate-bounce">
+            <div className="absolute inset-x-0 -top-20 flex flex-col items-center space-y-2 z-50 animate-bounce">
+              <span className="text-[7px] font-black text-red-500 bg-white px-3 py-1 rounded-full shadow-sm border border-red-100 uppercase tracking-widest">Signal Detected!</span>
               <button
                 onClick={() => { handlePlayPause(); if (!isExpanded) onExpandToggle?.(true); }}
-                className="bg-red-500 text-white px-6 py-3 rounded-full font-black text-[9px] uppercase tracking-widest shadow-2xl border-2 border-white/20 flex items-center space-x-2"
+                className="bg-red-500 text-white px-6 py-3 rounded-full font-black text-[9px] uppercase tracking-widest shadow-2xl border-2 border-white/20 flex items-center space-x-2 active:scale-95 transition-all"
               >
                 <i className="fas fa-satellite-dish"></i>
-                <span>Join Live Broadcast</span>
+                <span>Tap to Tune In Live</span>
               </button>
             </div>
           )}

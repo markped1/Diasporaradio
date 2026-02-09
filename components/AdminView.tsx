@@ -30,9 +30,10 @@ interface AdminViewProps {
   onPlayVideo?: (video: MediaFile) => void;
   activeVideoId?: string | null;
   activeVideoUrl?: string | null;
+  onStatusUpdate?: (msg: string) => void;
 }
 
-type Tab = 'command' | 'bulletin' | 'media' | 'inbox' | 'logs';
+type Tab = 'command' | 'midway' | 'bulletin' | 'media' | 'inbox' | 'logs';
 type MediaSubTab = 'audio' | 'video';
 
 const AdminView: React.FC<AdminViewProps> = ({
@@ -62,14 +63,19 @@ const AdminView: React.FC<AdminViewProps> = ({
   onEndNewsroom,
   onPlayVideo,
   activeVideoId,
-  activeVideoUrl
+  activeVideoUrl,
+  onStatusUpdate
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [selectedFolderForMaster, setSelectedFolderForMaster] = useState<string | null>(null);
-  const [statusMsg, setStatusMsg] = useState('');
+  const [statusMsg, setStatusMsgInternal] = useState('');
+  const setStatusMsg = (msg: string) => {
+    setStatusMsgInternal(msg);
+    onStatusUpdate?.(msg);
+  };
   const [mediaList, setMediaList] = useState<MediaFile[]>([]);
   const [reports, setReports] = useState<ListenerReport[]>([]);
   const [voiceMsg, setVoiceMsg] = useState('');
@@ -260,7 +266,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 
       <div className="flex items-center space-x-1.5 px-0.5">
         <div className="flex-grow flex space-x-1 bg-[#008751]/10 p-1 rounded-xl border border-green-200 shadow-sm overflow-x-auto no-scrollbar">
-          {(['command', 'bulletin', 'media', 'inbox', 'logs'] as Tab[]).map(t => (
+          {(['command', 'midway', 'bulletin', 'media', 'inbox', 'logs'] as Tab[]).map(t => (
             <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 min-w-[65px] py-2 text-[9.5px] font-black uppercase tracking-widest rounded-lg transition-all relative ${activeTab === t ? 'bg-[#008751] text-white shadow-md' : 'text-green-950/50 hover:text-green-950'}`}>
               {t === 'bulletin' ? 'Newsroom' : t}
               {t === 'inbox' && reports.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[6px] w-3 h-3 rounded-full flex items-center justify-center border border-white animate-bounce">{reports.length}</span>}
@@ -456,6 +462,71 @@ const AdminView: React.FC<AdminViewProps> = ({
               <div className="flex space-x-2">
                 <button onClick={() => onPlayJingle?.(1)} className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-[7px] font-black uppercase">ID 1</button>
                 <button onClick={() => onPlayJingle?.(2)} className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-[7px] font-black uppercase">ID 2</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        activeTab === 'midway' && (
+          <div className="space-y-4 animate-scale-in">
+            <div className="bg-amber-600 p-6 rounded-3xl text-white shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <i className="fas fa-bridge text-5xl"></i>
+              </div>
+              <h2 className="text-lg font-black uppercase italic mb-1">Midway Relay Hub</h2>
+              <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Bridge the Gap between Studio and Live Diaspora</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border-2 border-amber-100 shadow-md space-y-4">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                  <i className="fas fa-folder-tree text-amber-600"></i>
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase text-amber-900">Relay Control</h3>
+                  <p className="text-[8px] text-amber-800/60 uppercase font-bold">Select and broadcast specific folders</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto no-scrollbar p-1">
+                {Array.from(new Set(mediaList.map(m => m.folder || 'Uncategorized'))).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => onPlayFolder?.(f)}
+                    className={`p-4 rounded-2xl border-2 text-[9px] font-black uppercase transition-all flex flex-col items-center justify-center space-y-2 ${activeFolder === f
+                      ? 'bg-amber-600 border-amber-400 text-white shadow-lg scale-105 z-10'
+                      : 'bg-white border-amber-50 text-amber-900/60 hover:border-green-200'
+                      }`}
+                  >
+                    <i className={`fas ${activeFolder === f ? 'fa-broadcast-tower animate-pulse' : 'fa-folder'} text-lg`}></i>
+                    <span className="truncate w-full text-center">{f}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-amber-50">
+                <button
+                  onClick={onToggleRadio}
+                  className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all border-4 ${isRadioPlaying
+                    ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/20'
+                    : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/20'
+                    }`}
+                >
+                  <i className={`fas ${isRadioPlaying ? 'fa-stop-circle' : 'fa-play-circle'} mr-2 text-sm`}></i>
+                  {isRadioPlaying ? 'Kill Midway Signal' : 'Initialize Midway Live'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-amber-100 space-y-3 shadow-sm">
+              <h3 className="text-[7px] font-black uppercase tracking-widest text-amber-600 flex items-center">
+                <i className="fas fa-bolt mr-2"></i> Instant Midway Jingles
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => onPlayJingle?.(1)} className="bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl text-[8px] font-black uppercase shadow-md active:scale-95 transition-all">ID 1 (Intro)</button>
+                <button onClick={() => onPlayJingle?.(2)} className="bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl text-[8px] font-black uppercase shadow-md active:scale-95 transition-all">ID 2 (Outro)</button>
               </div>
             </div>
           </div>
