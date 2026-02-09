@@ -328,14 +328,17 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         </div>
 
         {/* Error Message */}
-        {errorMessage && (
+        {(errorMessage || radioEngine.getLastError()) && (
           <button
             onClick={() => { setErrorMessage(''); handlePlayPause(); }}
             className="bg-red-500/20 px-4 py-2 rounded-xl border border-red-500/40 w-full animate-bounce hover:bg-red-500/30 transition-all"
           >
-            <p className="text-[8px] font-black text-red-500 text-center uppercase tracking-wide">
-              {errorMessage} <i className="fas fa-play ml-2"></i>
-            </p>
+            <div className="flex flex-col items-center">
+              <p className="text-[8px] font-black text-red-500 uppercase tracking-wide">
+                {radioEngine.getLastError() || errorMessage}
+              </p>
+              <p className="text-[6px] text-red-400/60 uppercase mt-1">Tap To Join Live / Retry</p>
+            </div>
           </button>
         )}
 

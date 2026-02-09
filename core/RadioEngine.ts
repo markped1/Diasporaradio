@@ -7,6 +7,7 @@
 class RadioEngine {
     private audio: HTMLAudioElement | null = null;
     private currentUrl: string | null = null;
+    private lastError: string | null = null;
     private onStatusChange: ((status: 'IDLE' | 'LOADING' | 'PLAYING' | 'ERROR') => void) | null = null;
 
     private getAudio() {
@@ -23,18 +24,35 @@ class RadioEngine {
             this.audio.addEventListener('pause', () => this.notifyStatus('IDLE'));
             this.audio.addEventListener('ended', () => this.notifyStatus('IDLE'));
             this.audio.addEventListener('error', (e) => {
-                console.error("📡 [RadioEngine] Audio Error:", e);
+                const err = this.audio?.error;
+                let msg = "Unknown Audio Error";
+                if (err) {
+                    if (err.code === 1) msg = "Playback Aborted";
+                    if (err.code === 2) msg = "Network Error";
+                    if (err.code === 3) msg = "Decoding Error";
+                    if (err.code === 4) msg = "Format Not Supported / CORS";
+                }
+                console.error(`📡 [RadioEngine] Audio Error: ${msg}`, e);
+                this.lastError = msg;
                 this.notifyStatus('ERROR');
             });
 
             // Stalled/Suspend logic
-            this.audio.addEventListener('stalled', () => console.warn("📡 [RadioEngine] Stream stalled"));
+            this.audio.addEventListener('stalled', () => {
+                this.lastError = "Stream Stalled";
+                console.warn("📡 [RadioEngine] Stream stalled");
+            });
             this.audio.addEventListener('suspend', () => console.log("📡 [RadioEngine] Stream suspended"));
         }
         return this.audio;
     }
 
+    public getLastError(): string | null {
+        return this.lastError;
+    }
+
     private notifyStatus(status: 'IDLE' | 'LOADING' | 'PLAYING' | 'ERROR') {
+        if (status !== 'ERROR') this.lastError = null;
         console.log(`📡 [RadioEngine] Status: ${status}`);
         if (this.onStatusChange) {
             this.onStatusChange(status);

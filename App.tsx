@@ -849,8 +849,80 @@ const App: React.FC = () => {
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .animate-marquee { display: inline-flex; animation: marquee 50s linear infinite; }
       `}} />
+
+      <DiagnosticOverlay
+        hasInteracted={hasInteracted}
+        broadcast={broadcast}
+        syncStatus={syncStatus}
+      />
+    </div>
+  );
+}
+
+const DiagnosticOverlay: React.FC<{
+  hasInteracted: boolean;
+  broadcast: any;
+  syncStatus: string;
+}> = ({ hasInteracted, broadcast, syncStatus }) => {
+  const [show, setShow] = useState(false);
+  const engineError = radioEngine.getLastError();
+
+  if (!show) {
+    return (
+      <button
+        onClick={() => setShow(true)}
+        className="fixed bottom-4 left-4 z-[9999] bg-black/80 text-white/40 text-[8px] p-2 rounded-full hover:bg-black transition-colors"
+      >
+        DIAG
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-4 left-4 z-[9999] bg-black/95 text-green-400 p-4 rounded-2xl border border-white/10 shadow-2xl text-[10px] font-mono w-64 max-h-[80vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
+        <span className="font-black text-white uppercase tracking-widest text-[8px]">Sync Diagnostics</span>
+        <button onClick={() => setShow(false)} className="text-white/50 hover:text-white">✕</button>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <span>Interacted:</span>
+          <span className={hasInteracted ? 'text-green-500' : 'text-red-500'}>{hasInteracted ? 'YES' : 'NO'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Sync Status:</span>
+          <span className="text-white">{syncStatus}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Role:</span>
+          <span className="text-white uppercase font-black">NDR USER</span>
+        </div>
+
+        <div className="pt-2 border-t border-white/5">
+          <p className="text-white/40 mb-1 text-[8px]">LIVE BROADCAST DATA:</p>
+          <pre className="bg-black/50 p-2 rounded text-[8px] overflow-hidden">
+            {JSON.stringify({
+              playing: broadcast?.isPlaying,
+              track: broadcast?.activeTrackName?.substring(0, 15),
+              url: broadcast?.[broadcast.activeFolder ? 'activeFolderUrl' : 'activeTrackUrl'] ? 'SET' : 'MISSING'
+            }, null, 2)}
+          </pre>
+        </div>
+
+        {engineError && (
+          <div className="pt-2 border-t border-red-500/20">
+            <p className="text-red-500 font-bold mb-1">ENGINE ERROR:</p>
+            <p className="bg-red-500/10 text-red-500 p-2 rounded border border-red-500/20">
+              {engineError}
+            </p>
+          </div>
+        )}
+
+        <div className="pt-2 text-[8px] text-white/30 italic">
+          Tip: Tap to Join should reset error.
+        </div>
+      </div>
     </div>
   );
 };
-
-export default App;
