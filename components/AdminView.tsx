@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import TVPlayer from './TVPlayer';
 import { dbService } from '../services/dbService';
 import { AdminLog, MediaFile, NewsItem, ListenerReport, MidwayState } from '../types';
 
@@ -19,6 +20,9 @@ interface AdminViewProps {
   onTriggerFullBulletin?: () => Promise<void>;
   onPlayFolder?: (folder: string) => Promise<void>;
   activeFolder?: string | null;
+  tvPlaylist: MediaFile[];
+  tvAdverts: MediaFile[];
+  news: NewsItem[];
 }
 
 type Tab = 'command' | 'bulletin' | 'media' | 'inbox' | 'logs';
@@ -39,10 +43,12 @@ const AdminView: React.FC<AdminViewProps> = ({
   onPlayJingle,
   onDiscussIssue,
   onPing,
-  news = [],
   onTriggerFullBulletin,
   onPlayFolder,
-  activeFolder
+  activeFolder,
+  tvPlaylist,
+  tvAdverts,
+  news = []
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
@@ -60,6 +66,22 @@ const AdminView: React.FC<AdminViewProps> = ({
   const [cloudMode, setCloudMode] = useState(true); // Default to global broadcast
   const [uploadProgress, setUploadProgress] = useState(0);
   const [playbackPreferences, setPlaybackPreferences] = useState<Record<string, 'cloud' | 'local'>>({});
+  const [selectedTvVideo, setSelectedTvVideo] = useState<MediaFile | null>(null);
+
+  // Initialize selected TV video
+  useEffect(() => {
+    if (tvPlaylist.length > 0 && !selectedTvVideo) {
+      setSelectedTvVideo(tvPlaylist[0]);
+    }
+  }, [tvPlaylist, selectedTvVideo]);
+
+  const handleNextTvVideo = useCallback(() => {
+    if (tvPlaylist.length === 0) return;
+    const currentIndex = tvPlaylist.findIndex(v => v.id === selectedTvVideo?.id);
+    const nextIndex = (currentIndex + 1) % tvPlaylist.length;
+    setSelectedTvVideo(tvPlaylist[nextIndex]);
+    console.log("📺 Admin TV Auto-advancing:", tvPlaylist[nextIndex].name);
+  }, [tvPlaylist, selectedTvVideo]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -576,7 +598,36 @@ const AdminView: React.FC<AdminViewProps> = ({
               </button>
             </div>
             {mediaSubTab === 'video' && (
-              <button onClick={() => triggerUpload('video/*,image/*')} className="w-full bg-blue-600 text-white py-4 rounded-2xl flex flex-col items-center justify-center shadow-lg active:scale-95 transition-all"><i className="fas fa-cloud-upload-alt text-xl mb-1"></i><span className="text-[10px] font-black uppercase tracking-widest">Upload New Ad Content</span></button>
+              <div className="space-y-4">
+                {/* MASTER TV CONTROL STAGE */}
+                <div className="bg-black/95 p-4 rounded-3xl border-4 border-gray-800 shadow-2xl relative overflow-hidden group">
+                  <div className="absolute top-4 right-4 z-10 flex items-center space-x-2 bg-red-600 px-2 py-0.5 rounded-full animate-pulse border border-white/20">
+                    <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                    <span className="text-[7px] text-white font-black uppercase tracking-widest">Master Control Stage</span>
+                  </div>
+
+                  <TVPlayer
+                    playlist={tvPlaylist}
+                    adverts={tvAdverts}
+                    currentVideo={selectedTvVideo || (tvPlaylist.length > 0 ? tvPlaylist[0] : undefined)}
+                    onPlayVideo={(v) => setSelectedTvVideo(v)}
+                    onVideoEnd={handleNextTvVideo}
+                    showPlaylist={true} // ADMIN CAN SEE QUEUE
+                  />
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-black text-white/30 uppercase tracking-[3px]">NDRTV Signal Status</span>
+                      <span className="text-[10px] font-black text-green-500 uppercase flex items-center">
+                        <i className="fas fa-signal mr-2"></i> Encrypted Loop Active
+                      </span>
+                    </div>
+                    <button onClick={() => triggerUpload('video/*,image/*')} className="bg-white/10 hover:bg-white/20 text-white text-[7px] font-black uppercase px-4 py-2 rounded-xl border border-white/10 transition-all active:scale-95">
+                      <i className="fas fa-plus mr-2"></i> Add Ad Content
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
             {/* FOLDER NAVIGATION / BACK BUTTON */}
             {currentFolder && (

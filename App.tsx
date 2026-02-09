@@ -896,6 +896,8 @@ const App: React.FC = () => {
             news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
             onDiscussIssue={handleDiscussionBroadcast}
             onPing={playPing}
+            tvPlaylist={tvPlaylist}
+            tvAdverts={tvAdverts}
           />
         )}
       </main>

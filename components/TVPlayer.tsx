@@ -8,11 +8,12 @@ interface TVPlayerProps {
     currentVideo?: MediaFile;
     onVideoEnd?: () => void;
     onPlayVideo?: (video: MediaFile) => void;
+    showPlaylist?: boolean;
 }
 
 const AD_INTERVAL_SECONDS = 600; // 10 Minutes
 
-const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, onVideoEnd, onPlayVideo }) => {
+const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, onVideoEnd, onPlayVideo, showPlaylist = true }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackTime, setPlaybackTime] = useState(0); // Tracks time since last ad
@@ -168,30 +169,32 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
 
             </div>
 
-            {/* CHANNEL FOOTER (PLAYLIST) */}
-            <div className="bg-gray-900/50 p-4 rounded-xl border border-white/5">
-                <h3 className="text-xs font-black text-white/40 uppercase tracking-widest mb-3">Up Next on NDRTV</h3>
-                <div className="flex space-x-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
-                    {playlist.map((vid) => (
-                        <button
-                            key={vid.id}
-                            onClick={() => onPlayVideo?.(vid)}
-                            className={`flex-shrink-0 w-32 group relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${currentVideo?.id === vid.id ? 'border-green-500 scale-105' : 'border-transparent hover:border-white/30'}`}
-                        >
-                            <div className="absolute inset-0 bg-black/60 group-hover:bg-transparent transition-all"></div>
-                            <video src={vid.url} className="w-full h-full object-cover pointer-events-none" />
-                            <div className="absolute bottom-0 left-0 right-0 p-1 bg-gradient-to-t from-black to-transparent">
-                                <p className="text-[8px] text-white font-bold truncate">{vid.name}</p>
-                            </div>
-                            {currentVideo?.id === vid.id && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <i className="fas fa-play text-white drop-shadow-md"></i>
+            {/* CHANNEL FOOTER (PLAYLIST) - Only shown if enabled (e.g. for Admin) */}
+            {showPlaylist && (
+                <div className="bg-gray-900/50 p-4 rounded-xl border border-white/5">
+                    <h3 className="text-xs font-black text-white/40 uppercase tracking-widest mb-3">Up Next on NDRTV</h3>
+                    <div className="flex space-x-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
+                        {playlist.map((vid) => (
+                            <button
+                                key={vid.id}
+                                onClick={() => onPlayVideo?.(vid)}
+                                className={`flex-shrink-0 w-32 group relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${currentVideo?.id === vid.id ? 'border-green-500 scale-105' : 'border-transparent hover:border-white/30'}`}
+                            >
+                                <div className="absolute inset-0 bg-black/60 group-hover:bg-transparent transition-all"></div>
+                                <video src={vid.url} className="w-full h-full object-cover pointer-events-none" />
+                                <div className="absolute bottom-0 left-0 right-0 p-1 bg-gradient-to-t from-black to-transparent">
+                                    <p className="text-[8px] text-white font-bold truncate">{vid.name}</p>
                                 </div>
-                            )}
-                        </button>
-                    ))}
+                                {currentVideo?.id === vid.id && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <i className="fas fa-play text-white drop-shadow-md"></i>
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
         </div>
     );

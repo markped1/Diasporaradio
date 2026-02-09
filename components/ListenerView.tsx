@@ -37,6 +37,14 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   const [shareFeedback, setShareFeedback] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<MediaFile | null>(null);
 
+  const handleNextVideo = useCallback(() => {
+    if (tvPlaylist.length === 0) return;
+    const currentIndex = tvPlaylist.findIndex(v => v.id === selectedVideo?.id);
+    const nextIndex = (currentIndex + 1) % tvPlaylist.length;
+    setSelectedVideo(tvPlaylist[nextIndex]);
+    console.log("📺 TV Auto-advancing to next video:", tvPlaylist[nextIndex].name);
+  }, [tvPlaylist, selectedVideo]);
+
   // Initialize selected video
   useEffect(() => {
     if (tvPlaylist.length > 0 && !selectedVideo) {
@@ -111,6 +119,8 @@ const ListenerView: React.FC<ListenerViewProps> = ({
           adverts={tvAdverts}
           currentVideo={selectedVideo || (tvPlaylist.length > 0 ? tvPlaylist[0] : undefined)}
           onPlayVideo={(v) => setSelectedVideo(v)}
+          onVideoEnd={handleNextVideo}
+          showPlaylist={false}
         />
       </section>
 
