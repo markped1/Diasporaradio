@@ -322,6 +322,23 @@ const App: React.FC = () => {
     };
   }, [fetchData, currentLocation]);
 
+  // SYNC HUB: Keep local UI state in sync with Global Midway Broadcast
+  useEffect(() => {
+    if (broadcast) {
+      if (broadcast.isNewsroomActive !== undefined) setIsNewsroomActive(broadcast.isNewsroomActive);
+      if (broadcast.newsroomContent !== undefined) setNewsroomContent(broadcast.newsroomContent);
+      if (broadcast.activeVideoId !== undefined) setActiveVideoId(broadcast.activeVideoId);
+      if (broadcast.activeVideoUrl !== undefined) setActiveVideoUrl(broadcast.activeVideoUrl);
+      if (broadcast.activeFolder !== undefined) setActiveFolder(broadcast.activeFolder);
+    }
+  }, [
+    broadcast?.isNewsroomActive,
+    broadcast?.newsroomContent,
+    broadcast?.activeVideoId,
+    broadcast?.activeVideoUrl,
+    broadcast?.activeFolder
+  ]);
+
   const handlePlayNext = useCallback(async () => {
     let playlist = playlistRef.current;
 
@@ -656,7 +673,7 @@ const App: React.FC = () => {
               </span>
             ))}
             {news.length === 0 && (
-              <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
+              <h4 className="text-[10px] font-black text-green-900 uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
                 {activeFolder ? `REELING: ${activeFolder}` : (broadcast?.activeTrackName || 'NDR RADIO')}
               </h4>
             )}

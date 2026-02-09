@@ -210,28 +210,17 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         </div>
 
         {/* TRACK DISPLAY (MATCHES ADMIN STYLE) */}
-        <div className="w-full max-w-sm bg-white p-3 rounded-2xl border-2 border-green-100 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-10">
-            <i className="fas fa-tower-broadcast text-xl text-green-800"></i>
-          </div>
-
-          <div className="flex flex-col items-center space-y-2 text-center relative z-10">
-            <span className="text-[7px] font-black text-green-800/40 uppercase tracking-[0.3em]">Direct Studio Feed</span>
-
-            <div className="bg-green-50/50 py-2.5 px-6 rounded-xl border border-green-100/50 shadow-inner w-full">
-              <span className="text-[9px] font-black text-green-950 uppercase block tracking-[0.05em] truncate">
-                {activeTrackUrl ? currentTrackName : 'AWAITING BROADCAST...'}
-              </span>
-            </div>
-
-            {/* Micro Progress Line */}
+        <div className="w-full max-w-sm bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-green-100 shadow-sm relative overflow-hidden group">
+          <div className="flex flex-col items-center space-y-1 text-center relative z-10">
+            {/* Micro Progress Line - Redesigned for cleaner look */}
             <div className="w-full flex items-center space-x-3 mt-1">
-              <span className="text-[7px] font-mono text-green-600/40">{formatTime(currentTime)}</span>
-              <div className="flex-grow h-1 bg-green-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#008751] transition-all duration-300 shadow-[0_0_5px_rgba(0,135,81,0.5)]" style={{ width: `${progress}%` }}></div>
+              <span className="text-[7px] font-mono text-green-700/60 font-black">{formatTime(currentTime)}</span>
+              <div className="flex-grow h-1.5 bg-green-100/50 rounded-full overflow-hidden border border-green-200/30">
+                <div className="h-full bg-[#008751] transition-all duration-300 shadow-[0_0_8px_rgba(0,135,81,0.4)]" style={{ width: `${progress}%` }}></div>
               </div>
-              <span className="text-[7px] font-mono text-green-600/40">{formatTime(duration)}</span>
+              <span className="text-[7px] font-mono text-green-700/60 font-black">{formatTime(duration)}</span>
             </div>
+            <p className="text-[6px] font-black text-green-800/20 uppercase tracking-[0.4em] mt-1">Dynamic Signal Monitoring</p>
           </div>
         </div>
 

@@ -38,7 +38,6 @@ class SpeechService {
                 return;
             } catch (err) {
                 console.warn("Puter AI TTS failed, falling back to Browser Native:", err);
-                // Fall through to native fallback
             }
         }
 
@@ -47,39 +46,51 @@ class SpeechService {
             return;
         }
 
-        // Cancel any current speech
         this.stop();
+        onStart?.();
 
-        const utterance = new SpeechSynthesisUtterance(text);
+        // CHUNKING LOGIC: Split text into smaller segments for better stability in native TTS
+        const chunks = text.match(/[^.!?]+[.!?]+|[^.!?]+/g) || [text];
+        let currentIdx = 0;
 
-        // Attempt to find a suitable voice
-        const voices = this.getVoices();
-        if (voiceName) {
-            const selectedVoice = voices.find(v => v.name === voiceName);
-            if (selectedVoice) utterance.voice = selectedVoice;
-        } else {
-            // Default: try to find an English voice (preferably Nigerian if available, though rare in defaults)
-            const enVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
-                voices.find(v => v.lang.startsWith('en'));
-            if (enVoice) utterance.voice = enVoice;
-        }
+        const speakNextChunk = () => {
+            if (currentIdx >= chunks.length) {
+                onEnd?.();
+                return;
+            }
 
-        utterance.pitch = 1.0;
-        utterance.rate = 0.95; // Slightly slower for better clarity
-        utterance.volume = 1.0;
+            const utterance = new SpeechSynthesisUtterance(chunks[currentIdx].trim());
+            const voices = this.getVoices();
 
-        utterance.onstart = () => onStart?.();
-        utterance.onend = () => {
-            this.currentUtterance = null;
-            onEnd?.();
+            if (voiceName) {
+                const selectedVoice = voices.find(v => v.name === voiceName);
+                if (selectedVoice) utterance.voice = selectedVoice;
+            } else {
+                const enVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium'))) ||
+                    voices.find(v => v.lang.startsWith('en'));
+                if (enVoice) utterance.voice = enVoice;
+            }
+
+            utterance.pitch = 1.0;
+            utterance.rate = 0.95;
+            utterance.volume = 1.0;
+
+            utterance.onend = () => {
+                currentIdx++;
+                speakNextChunk();
+            };
+
+            utterance.onerror = (e) => {
+                console.error("Native TTS Chunk Error:", e);
+                currentIdx++;
+                speakNextChunk();
+            };
+
+            this.currentUtterance = utterance;
+            this.synth!.speak(utterance);
         };
-        utterance.onerror = (e) => {
-            this.currentUtterance = null;
-            onError?.(e);
-        };
 
-        this.currentUtterance = utterance;
-        this.synth.speak(utterance);
+        speakNextChunk();
     }
 
     stop() {
