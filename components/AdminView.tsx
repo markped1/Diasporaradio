@@ -170,23 +170,29 @@ const AdminView: React.FC<AdminViewProps> = ({
         setStatusMsg(`Importing: ${i + 1}/${total} - ${file.name.slice(0, 20)}...`);
 
         try {
-          let cloudUrl = '';
-          if (isCloud) {
-            cloudUrl = await dbService.uploadMedia(file) || '';
-          }
-
-          // Determine folder from webkitRelativePath if it exists (folder upload)
           const relPath = (file as any).webkitRelativePath;
           let fileFolder = currentFolder || 'Uncategorized';
           if (relPath && relPath.includes('/')) {
             fileFolder = relPath.split('/')[0];
           }
 
+          let cloudUrl = '';
+          // Force Cloud Upload if cloudMode is on (Now default)
+          if (isCloud) {
+            setStatusMsg(`Cloud Uploading: ${file.name.slice(0, 15)}...`);
+            cloudUrl = await dbService.uploadMedia(file) || '';
+            if (!cloudUrl) {
+              console.warn(`[AdminView] Skip: Cloud upload failed for ${file.name}`);
+              failCount++;
+              continue;
+            }
+          }
+
           await dbService.addMedia({
             id: 'media-' + Math.random().toString(36).substr(2, 9),
             name: file.name,
             url: cloudUrl,
-            file: cloudUrl ? undefined : file,
+            file: (cloudUrl && isCloud) ? undefined : file, // Don't store large blobs locally if cloud succeeds
             type: finalType,
             timestamp: Date.now(),
             likes: 0,
@@ -789,13 +795,13 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <p className="text-[9px] font-bold text-green-950 truncate">{item.name}</p>
                             <div className="flex items-center space-x-2">
                               {hasCloud && (
-                                <span className={`text-[6px] font-black uppercase flex items-center ${pref === 'cloud' ? 'text-blue-500' : 'text-gray-400'}`}>
-                                  <i className="fas fa-cloud mr-1"></i> Cloud
+                                <span className={`text-[6px] font-black uppercase flex items-center px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100 ${pref === 'cloud' ? 'text-blue-600' : 'text-gray-400'}`}>
+                                  <i className="fas fa-cloud mr-1"></i> Cloud Valid
                                 </span>
                               )}
-                              {hasLocal && (
-                                <span className={`text-[6px] font-black uppercase flex items-center ${pref === 'local' ? 'text-orange-500' : 'text-gray-400'}`}>
-                                  <i className="fas fa-hdd mr-1"></i> Local
+                              {!hasCloud && (
+                                <span className="text-[6px] font-black uppercase flex items-center px-1.5 py-0.5 rounded bg-orange-50 border border-orange-100 text-orange-600">
+                                  <i className="fas fa-circle-exclamation mr-1"></i> Local Only
                                 </span>
                               )}
                             </div>

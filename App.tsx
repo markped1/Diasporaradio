@@ -734,37 +734,17 @@ const App: React.FC = () => {
             onRefreshData={fetchData} logs={logs}
             onPlayTrack={async (t) => {
               setHasInteracted(true);
-              // 1. IMMEDIATE FEEDBACK for Admin
-              radioEngine.play(t.url);
+              // 1. Admin local feedback
+              if (t.url) radioEngine.play(t.url);
 
-              try {
-                let broadcastUrl = t.url;
-                const isLocal = t.url.startsWith('blob:') || t.url.startsWith('data:');
-
-                if (isLocal && t.file && supabase) {
-                  setStatusMsg(`Uploading ${t.name} to Cloud...`);
-                  const cloudUrl = await dbService.uploadMedia(t.file as File);
-                  if (cloudUrl) {
-                    broadcastUrl = cloudUrl;
-                    console.log("☁️ File uploaded to Supabase Storage:", cloudUrl);
-                    // Update local reference so we don't upload again
-                    await dbService.addMedia({ ...t, url: cloudUrl });
-                  }
-                }
-
-                await dbService.updateMidwayState({
-                  activeTrackId: t.id,
-                  activeTrackName: cleanTrackName(t.name),
-                  activeTrackUrl: broadcastUrl,
-                  isPlaying: true,
-                  broadcastPulse: Date.now()
-                });
-                setStatusMsg("");
-              } catch (err) {
-                console.error("Cloud Broadcast Sync failed:", err);
-                setStatusMsg("Global Sync Failed (Local File).");
-                setTimeout(() => setStatusMsg(""), 3000);
-              }
+              // 2. Global Sync (Assuming t.url is already a valid Cloud URL from the new upload flow)
+              await dbService.updateMidwayState({
+                activeTrackId: t.id,
+                activeTrackName: cleanTrackName(t.name),
+                activeTrackUrl: t.url,
+                isPlaying: true,
+                broadcastPulse: Date.now()
+              });
             }}
             isRadioPlaying={broadcast?.isPlaying || false}
             onPlayFolder={handlePlayFolder}

@@ -203,6 +203,8 @@ class DBService {
 
   async addMedia(file: MediaFile): Promise<void> {
     const db = await this.getDB();
+
+    // 1. Save to Local IndexedDB (Always have a local registry)
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction(MEDIA_STORE, 'readwrite');
       const store = transaction.objectStore(MEDIA_STORE);
@@ -212,9 +214,10 @@ class DBService {
       request.onerror = () => reject(request.error);
     });
 
-    // If it's a cloud file (URL exists and No binary file), sync to Global Persistent Library
-    if (file.url && !file.file && supabase) {
+    // 2. Clear Cloud Sync: If URL exists, Ensure it's in the Supabase 'media_library' table
+    if (file.url && supabase) {
       try {
+        console.log(`☁️ [dbService] Syncing [${file.name}] to Global Library...`);
         const { error } = await supabase
           .from('media_library')
           .upsert({
@@ -230,16 +233,18 @@ class DBService {
         if (error) {
           console.error("Supabase Media Library sync error:", error);
           if (error.message.includes('relation "media_library" does not exist')) {
-            throw new Error("Cloud Persistence Failed: Table 'media_library' missing. Please run the SQL provided in the instructions.");
+            throw new Error("Cloud Persistence Failed: Table 'media_library' missing. Please check your Supabase dashboard.");
           }
           throw error;
         }
 
-        // Also trigger a pulse to notify listeners of library update
+        // Trigger pulse so listeners see the new track in their library (if open)
         await this.sendPulse('SYNC');
       } catch (e: any) {
         console.error("Global Library persistence failed:", e);
-        throw e; // Propagate to UI
+        // Important: We don't throw here if it was just a network blip during a batch,
+        // but we log it heavily so the Admin knows something went wrong.
+        throw new Error(`Cloud Sync failed for ${file.name}: ${e.message}`);
       }
     }
   }
