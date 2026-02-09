@@ -69,8 +69,8 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
             videoRef.current.src = currentVideo.url;
             videoRef.current.load(); // Ensure source is loaded
             videoRef.current.play().catch(e => {
-                console.warn("Autoplay blocked", e);
-                setIsPlaying(false); // Update state if blocked
+                console.warn("Autoplay blocked or load failed", e);
+                setIsPlaying(false);
             });
         }
     }, [currentVideo, isAdBreak]);
@@ -108,32 +108,62 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
                     poster="https://via.placeholder.com/640x360.png?text=NDRTV+Signal+Offline"
                 />
 
-                {/* PLAY/PAUSE OVERLAY */}
-                {!isAdBreak && (
-                    <div
-                        onClick={togglePlay}
-                        className={`absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all cursor-pointer ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
-                    >
-                        <div className={`w-16 h-16 flex items-center justify-center rounded-full bg-green-600/80 text-white shadow-xl transform transition-transform ${isPlaying ? 'scale-75' : 'scale-100 animate-pulse'}`}>
-                            <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play text-xl ml-1'}`}></i>
-                        </div>
-                    </div>
-                )}
-
                 {/* TV BRANDING OVERLAY */}
                 <div className="absolute top-4 left-4 pointer-events-none flex flex-col space-y-1">
                     <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center shadow-lg">
+                        <div className="w-8 h-8 bg-[#008751] rounded flex items-center justify-center shadow-lg border border-white/20">
                             <span className="text-white font-black text-[10px]">NDR</span>
                         </div>
                         <span className="text-white font-black text-xs shadow-black drop-shadow-md">TV</span>
                     </div>
                     {isPlaying && (
-                        <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-red-600 rounded-full w-fit shadow-lg animate-pulse">
-                            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                            <span className="text-[7px] text-white font-black uppercase tracking-tighter">Live Stage</span>
+                        <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-red-600 rounded-full w-fit shadow-lg animate-pulse border border-white/10">
+                            <div className="w-1 h-1 bg-white rounded-full"></div>
+                            <span className="text-[6px] text-white font-bold uppercase tracking-widest">Live</span>
                         </div>
                     )}
+                </div>
+
+                {/* INITIAL PLAY OVERLAY (Only if not playing) */}
+                {!isPlaying && !isAdBreak && (
+                    <div
+                        onClick={togglePlay}
+                        className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 cursor-pointer backdrop-blur-[1px]"
+                    >
+                        {!currentVideo && (
+                            <div className="flex flex-col items-center space-y-2 opacity-50">
+                                <i className="fas fa-satellite-dish text-4xl mb-2 text-[#008751]"></i>
+                                <span className="text-[10px] text-white font-black uppercase tracking-[4px]">NDRTV: Searching for Signal...</span>
+                            </div>
+                        )}
+                        {currentVideo && !isPlaying && (
+                            <div className="flex flex-col items-center space-y-4">
+                                <div className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 backdrop-blur-md">
+                                    <i className="fas fa-play text-white/40"></i>
+                                </div>
+                                <span className="text-[10px] text-white/40 font-black uppercase tracking-[4px]">Click to Broadast</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* PREMIUM CONTROL BAR (Bottom Left) */}
+                <div className={`absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black to-transparent flex items-end p-4 transition-all duration-500 ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+                    <div className="flex items-center space-x-4">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white transition-all active:scale-90"
+                        >
+                            <i className={`fas ${isPlaying ? 'fa-pause text-xs' : 'fa-play text-xs ml-0.5'}`}></i>
+                        </button>
+
+                        {currentVideo && (
+                            <div className="flex flex-col mb-1 select-none">
+                                <span className="text-[10px] text-white/30 font-black uppercase tracking-widest leading-none mb-1">Live Channel</span>
+                                <span className="text-xs text-white font-black truncate max-w-[250px] leading-none">{currentVideo.name}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
             </div>
