@@ -330,13 +330,43 @@ const App: React.FC = () => {
       if (broadcast.activeVideoId !== undefined) setActiveVideoId(broadcast.activeVideoId);
       if (broadcast.activeVideoUrl !== undefined) setActiveVideoUrl(broadcast.activeVideoUrl);
       if (broadcast.activeFolder !== undefined) setActiveFolder(broadcast.activeFolder);
+
+      // 🔊 BROADCAST RELAY: Listeners play AI-generated content (news, jingles, discussion)
+      if (broadcast.activeBroadcast && broadcast.activeBroadcast.id !== lastBroadcastIdRef.current) {
+        const b = broadcast.activeBroadcast;
+        lastBroadcastIdRef.current = b.id;
+
+        // Only play if it's recently triggered (within last 30 seconds) to avoid stale replay on join
+        const isRecent = (Date.now() - b.timestamp) < 30000;
+
+        if (isRecent && role === UserRole.LISTENER && hasInteracted) {
+          console.log(`📡 [App] Processing Remote Broadcast: ${b.type}`);
+
+          if (b.type === 'news') {
+            getNewsAudio(b.text).then(audio => {
+              if (audio) playRawPcm(audio, 'news');
+            });
+          } else if (b.type === 'jingle') {
+            getJingleAudio(b.text).then(audio => {
+              if (audio) playRawPcm(audio, 'jingle');
+            });
+          } else if (b.type === 'discussion') {
+            getDiscussionAudio(b.text).then(audio => {
+              if (audio) playRawPcm(audio, 'news');
+            });
+          }
+        }
+      }
     }
   }, [
     broadcast?.isNewsroomActive,
     broadcast?.newsroomContent,
     broadcast?.activeVideoId,
     broadcast?.activeVideoUrl,
-    broadcast?.activeFolder
+    broadcast?.activeFolder,
+    broadcast?.activeBroadcast?.id,
+    role,
+    hasInteracted
   ]);
 
   const handlePlayNext = useCallback(async () => {

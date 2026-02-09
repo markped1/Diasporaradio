@@ -12,21 +12,28 @@ export const useListenerAudio = (hasInteracted: boolean) => {
     const { broadcast } = useBroadcast();
 
     useEffect(() => {
-        if (!broadcast) return;
+        if (!broadcast) {
+            console.log("🎵 [useListenerAudio] Waiting for broadcast state...");
+            return;
+        }
 
         const isLive = broadcast.isPlaying;
         const streamUrl = broadcast.activeTrackUrl;
 
-        console.log(`🎵 [useListenerAudio] Sync: isLive=${isLive}, interacted=${hasInteracted}, url=${streamUrl}`);
+        console.log(`🎵 [useListenerAudio] STATE SYNC:
+            - isLive: ${isLive}
+            - hasInteracted: ${hasInteracted}
+            - streamUrl: ${streamUrl ? 'PRESENT' : 'MISSING'}
+            - syncStatus: ${broadcast.activeTrackName || 'N/A'}`);
 
         if (isLive && hasInteracted && streamUrl) {
-            console.log(`🎵 [useListenerAudio] -> PLAY`);
+            console.log(`🎵 [useListenerAudio] -> EXECUTE PLAY: ${streamUrl}`);
             radioEngine.play(streamUrl);
         } else if (!isLive || !streamUrl) {
-            console.log(`🎵 [useListenerAudio] -> STOP (Broadcast stopped)`);
+            console.log(`🎵 [useListenerAudio] -> EXECUTE STOP (Reason: ${!isLive ? 'Stopped' : 'Missing URL'})`);
             radioEngine.stop();
-        } else {
-            console.log(`🎵 [useListenerAudio] -> STANDBY (Awaiting interaction)`);
+        } else if (isLive && !hasInteracted) {
+            console.warn(`🎵 [useListenerAudio] -> BLOCK (Awaiting interaction to comply with browser policy)`);
         }
     }, [broadcast?.isPlaying, broadcast?.activeTrackUrl, hasInteracted]);
 };
