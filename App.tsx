@@ -813,15 +813,64 @@ const App: React.FC = () => {
             activeFolder={activeFolder}
             onToggleRadio={async () => {
               const newState = !isRadioPlaying;
-              // IMMEDIATE FEEDBACK for Admin
-              setIsRadioPlaying(newState);
-              setHasInteracted(true);
 
-              await dbService.updateMidwayState({
-                isPlaying: newState,
-                broadcastPulse: Date.now(),
-                lastEvent: { type: newState ? 'PLAY' : 'STOP', timestamp: Date.now() }
-              });
+              if (newState) {
+                // 1. STARTING MASTER BROADCAST (Global Mode)
+                console.log("🚀 Starting Master Broadcast (Global Mode)");
+                setActiveFolder(null); // Clear local folder restriction
+
+                // 2. Ensure a track is ready if none is selected
+                let targetTrackId = activeTrackId;
+                let targetTrackUrl = activeTrackUrl;
+                let targetTrackName = currentTrackName;
+
+                // Use playlistRef to get latest tracks
+                const globalPlaylist = playlistRef.current;
+
+                if ((!targetTrackId || targetTrackId === 'default') && globalPlaylist.length > 0) {
+                  // Pick specific track to ensure listeners sync to *something*
+                  const randomTrack = globalPlaylist[Math.floor(Math.random() * globalPlaylist.length)];
+                  targetTrackId = randomTrack.id;
+                  targetTrackUrl = randomTrack.url;
+                  targetTrackName = cleanTrackName(randomTrack.name);
+
+                  // Update local immediately
+                  setActiveTrackId(targetTrackId);
+                  setActiveTrackUrl(targetTrackUrl);
+                  setCurrentTrackName(targetTrackName);
+                }
+
+                setIsRadioPlaying(true);
+                setHasInteracted(true);
+
+                // 3. Resolve Broadcast URL
+                // Find Cloud URL if available for the track
+                const allMedia = [...globalPlaylist, ...sponsoredMedia];
+                const trackInfo = allMedia.find(m => m.id === targetTrackId);
+                const isLocalBlob = targetTrackUrl?.startsWith('blob:') || targetTrackUrl?.startsWith('data:');
+                const broadcastUrl = trackInfo?.url || (isLocalBlob ? null : targetTrackUrl);
+
+                await dbService.updateMidwayState({
+                  isPlaying: true,
+                  activeFolder: null, // CLEAR FOLDER restriction globally
+                  activeTrackId: targetTrackId,
+                  activeTrackName: targetTrackName,
+                  activeTrackUrl: broadcastUrl,
+                  broadcastPulse: Date.now(),
+                  lastEvent: { type: 'PLAY', timestamp: Date.now() }
+                });
+
+              } else {
+                // STOPPING BROADCAST
+                setIsRadioPlaying(false);
+                setHasInteracted(true);
+
+                await dbService.updateMidwayState({
+                  isPlaying: false,
+                  broadcastPulse: Date.now(),
+                  lastEvent: { type: 'STOP', timestamp: Date.now() }
+                });
+              }
             }}
             currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
             onPlayAll={handlePlayAll} onSkipNext={handlePlayNext}
