@@ -119,8 +119,8 @@ const AdminView: React.FC<AdminViewProps> = ({
         const ext = file.name.split('.').pop()?.toLowerCase() || '';
         const mime = file.type.toLowerCase();
         const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(ext) || mime.startsWith('audio/');
-        const isVideo = ['mp4', 'webm', 'mov'].includes(ext) || mime.startsWith('video/');
-        const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) || mime.startsWith('image/');
+        const isVideo = (['mp4', 'mov', 'm4v', 'avi', 'mkv'].includes(ext) || mime.startsWith('video/')) && !mime.startsWith('audio/');
+        const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) || mime.startsWith('image/');
 
         const finalType: 'audio' | 'video' | 'image' = isAudio ? 'audio' : (isVideo ? 'video' : 'image');
         if (!isAudio && !isVideo && !isImage) continue;
@@ -364,8 +364,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                         key={f}
                         onClick={() => setSelectedFolderForMaster(f)}
                         className={`p-3 rounded-xl border text-[8px] font-black uppercase transition-all flex items-center justify-between ${selectedFolderForMaster === f
-                            ? 'bg-green-600 border-green-400 text-white shadow-md scale-105 z-10'
-                            : 'bg-white border-green-50 text-green-900/60 hover:border-green-200'
+                          ? 'bg-green-600 border-green-400 text-white shadow-md scale-105 z-10'
+                          : 'bg-white border-green-50 text-green-900/60 hover:border-green-200'
                           }`}
                       >
                         <span className="truncate mr-2">{f}</span>
@@ -378,8 +378,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                     onClick={() => selectedFolderForMaster && onPlayFolder?.(selectedFolderForMaster)}
                     disabled={!selectedFolderForMaster}
                     className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] transition-all border-b-4 ${selectedFolderForMaster
-                        ? 'bg-amber-500 border-amber-600 text-white shadow-lg active:scale-95 active:border-b-0'
-                        : 'bg-gray-100 border-gray-200 text-gray-400'
+                      ? 'bg-amber-500 border-amber-600 text-white shadow-lg active:scale-95 active:border-b-0'
+                      : 'bg-gray-100 border-gray-200 text-gray-400'
                       }`}
                   >
                     <i className="fas fa-tower-broadcast mr-2 text-xs"></i>

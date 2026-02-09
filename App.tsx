@@ -88,14 +88,19 @@ const App: React.FC = () => {
 
       setNews(n || []);
       setLogs(l || []);
-      setNews(n || []);
-      setLogs(l || []);
 
       const videos = processedMedia.filter(item => item.type === 'video');
-      setTvAdverts(videos.filter(v => v.folder === 'TV Adverts'));
-      setTvPlaylist(videos.filter(v => v.folder !== 'TV Adverts'));
 
-      setSponsoredMedia(processedMedia.filter(item => item.type === 'image')); // Keep images for other uses maybe?
+      // Strict TV Playlist: must be a video AND either in 'Videos' folder OR not in audio-centric folders
+      setTvAdverts(videos.filter(v => v.folder === 'TV Adverts'));
+      setTvPlaylist(videos.filter(v =>
+        v.folder !== 'TV Adverts' &&
+        v.folder !== 'Music' &&
+        v.folder !== 'Jingles' &&
+        v.folder !== 'Admin Discussion'
+      ));
+
+      setSponsoredMedia(processedMedia.filter(item => item.type === 'image'));
       setAudioPlaylist(processedMedia.filter(item => item.type === 'audio'));
       setAdminMessages(msg || []);
       setReports(rep || []);
