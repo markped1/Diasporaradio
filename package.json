@@ -14,6 +14,8 @@
     "@capacitor/core": "^8.0.2",
     "@google/genai": "^1.38.0",
     "@supabase/supabase-js": "^2.95.3",
+    "axios": "^1.13.5",
+    "dotenv": "^17.2.4",
     "firebase": "^12.9.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
