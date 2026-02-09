@@ -31,6 +31,7 @@ interface AdminViewProps {
   activeVideoId?: string | null;
   activeVideoUrl?: string | null;
   onStatusUpdate?: (msg: string) => void;
+  broadcast?: MidwayState;
 }
 
 type Tab = 'command' | 'midway' | 'bulletin' | 'media' | 'inbox' | 'logs';
@@ -64,7 +65,8 @@ const AdminView: React.FC<AdminViewProps> = ({
   onPlayVideo,
   activeVideoId,
   activeVideoUrl,
-  onStatusUpdate
+  onStatusUpdate,
+  broadcast
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
@@ -244,6 +246,23 @@ const AdminView: React.FC<AdminViewProps> = ({
     setIsProcessing(false);
     setStatusMsg(`Broadcast complete.`);
     setTimeout(() => setStatusMsg(''), 3000);
+  };
+
+  const handleAddFolder = async () => {
+    const name = prompt("Enter new folder name:");
+    if (!name || name.trim() === '') return;
+
+    setIsProcessing(true);
+    setStatusMsg(`Creating folder: ${name}...`);
+    try {
+      await dbService.addCustomFolder(name.trim());
+      setStatusMsg("Folder created successfully!");
+    } catch (err: any) {
+      setStatusMsg(`Create Failed: ${err.message}`);
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setStatusMsg(''), 3000);
+    }
   };
 
   const triggerUpload = (accept: string = 'audio/*') => {
@@ -739,25 +758,19 @@ const AdminView: React.FC<AdminViewProps> = ({
             )}
 
             {!currentFolder ? (
-              <div className="grid grid-cols-2 gap-3">
-                {['Music', 'Jingles', 'Ads', 'News', 'Recordings'].map(folder => {
-                  const count = mediaList.filter(m => m.folder === folder).length;
-                  return (
-                    <button
-                      key={folder}
-                      onClick={() => setCurrentFolder(folder)}
-                      className="bg-white p-4 rounded-2xl border border-green-50 shadow-sm flex flex-col items-center justify-center space-y-2 hover:border-green-200 transition-all active:scale-95"
-                    >
-                      <i className="fas fa-folder text-2xl text-amber-500"></i>
-                      <span className="text-[10px] font-black uppercase text-green-950">{folder}</span>
-                      <span className="text-[7px] font-bold text-gray-400 uppercase">{count} Items</span>
-                    </button>
-                  );
-                })}
-                {/* Dynamically detected folders that aren't in the default 5 */}
-                {Array.from(new Set(mediaList.map(m => m.folder || 'Uncategorized')))
-                  .filter(f => !['Music', 'Jingles', 'Ads', 'News', 'Recordings'].includes(f as string))
-                  .map(folder => {
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-[9px] font-black uppercase text-green-800/40 tracking-[0.2em]">Storage Folders</h3>
+                  <button
+                    onClick={handleAddFolder}
+                    className="text-[7px] font-black uppercase bg-green-50 text-green-600 px-3 py-1.5 rounded-lg border border-green-200 shadow-sm active:scale-95 transition-all"
+                  >
+                    <i className="fas fa-plus-circle mr-1"></i> New Folder
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {['Music', 'Jingles', 'Ads', 'News', 'Recordings'].map(folder => {
                     const count = mediaList.filter(m => m.folder === folder).length;
                     return (
                       <button
@@ -765,12 +778,47 @@ const AdminView: React.FC<AdminViewProps> = ({
                         onClick={() => setCurrentFolder(folder)}
                         className="bg-white p-4 rounded-2xl border border-green-50 shadow-sm flex flex-col items-center justify-center space-y-2 hover:border-green-200 transition-all active:scale-95"
                       >
-                        <i className="fas fa-folder text-2xl text-green-400"></i>
+                        <i className="fas fa-folder text-2xl text-amber-500"></i>
                         <span className="text-[10px] font-black uppercase text-green-950">{folder}</span>
                         <span className="text-[7px] font-bold text-gray-400 uppercase">{count} Items</span>
                       </button>
                     );
                   })}
+
+                  {/* Custom Folders from MidwayState */}
+                  {(broadcast?.custom_folders || []).map(folder => {
+                    const count = mediaList.filter(m => m.folder === folder).length;
+                    return (
+                      <button
+                        key={folder}
+                        onClick={() => setCurrentFolder(folder)}
+                        className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col items-center justify-center space-y-2 hover:border-blue-200 transition-all active:scale-95"
+                      >
+                        <i className="fas fa-folder text-2xl text-blue-400"></i>
+                        <span className="text-[10px] font-black uppercase text-green-950">{folder}</span>
+                        <span className="text-[7px] font-bold text-gray-400 uppercase">{count} Items</span>
+                      </button>
+                    );
+                  })}
+
+                  {/* Dynamically detected folders that aren't in the default or custom lists */}
+                  {Array.from(new Set(mediaList.map(m => m.folder || 'Uncategorized')))
+                    .filter(f => !['Music', 'Jingles', 'Ads', 'News', 'Recordings'].includes(f as string) && !(broadcast?.custom_folders || []).includes(f as string))
+                    .map(folder => {
+                      const count = mediaList.filter(m => m.folder === folder).length;
+                      return (
+                        <button
+                          key={folder}
+                          onClick={() => setCurrentFolder(folder)}
+                          className="bg-white p-4 rounded-2xl border border-green-50 shadow-sm flex flex-col items-center justify-center space-y-2 hover:border-green-200 transition-all active:scale-95"
+                        >
+                          <i className="fas fa-folder text-2xl text-green-400"></i>
+                          <span className="text-[10px] font-black uppercase text-green-950">{folder}</span>
+                          <span className="text-[7px] font-bold text-gray-400 uppercase">{count} Items</span>
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

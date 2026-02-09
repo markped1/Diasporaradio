@@ -409,6 +409,17 @@ class DBService {
     };
   }
 
+  async addCustomFolder(folderName: string): Promise<void> {
+    this.checkConfig();
+    const state = await this.getMidwayState();
+    const currentFolders = state?.custom_folders || [];
+    if (currentFolders.includes(folderName)) return;
+
+    await this.updateMidwayState({
+      custom_folders: [...currentFolders, folderName]
+    });
+  }
+
   async getDiscussionQueue(): Promise<string[]> {
     try {
       if (supabase) {

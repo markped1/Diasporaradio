@@ -88,4 +88,5 @@ export interface MidwayState {
   newsroomContent?: string | null; // The text the anchors should read
   activeVideoId?: string | null; // Currently playing video ID
   activeVideoUrl?: string | null; // Currently playing video URL
+  custom_folders?: string[]; // Admin-defined music folders
 }

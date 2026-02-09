@@ -731,6 +731,7 @@ const App: React.FC = () => {
           />
         ) : (
           <AdminView
+            broadcast={broadcast || undefined}
             onRefreshData={fetchData} logs={logs}
             onPlayTrack={async (t) => {
               setHasInteracted(true);
