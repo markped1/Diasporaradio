@@ -97,7 +97,8 @@ const App: React.FC = () => {
         v.folder !== 'TV Adverts' &&
         v.folder !== 'Music' &&
         v.folder !== 'Jingles' &&
-        v.folder !== 'Admin Discussion'
+        v.folder !== 'Admin Discussion' &&
+        v.name.toLowerCase().endsWith('.mp4')
       ));
 
       setSponsoredMedia(processedMedia.filter(item => item.type === 'image'));
