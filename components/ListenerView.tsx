@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import SponsoredVideo from './SponsoredVideo';
+import TVPlayer from './TVPlayer';
 import { NewsItem, MediaFile, AdminMessage, ListenerReport } from '../types';
 import { dbService } from './../services/dbService';
 import { CHANNEL_INTRO, DESIGNER_NAME, APP_NAME } from '../constants';
@@ -9,7 +9,8 @@ interface ListenerViewProps {
   news: NewsItem[];
   onStateChange: (isPlaying: boolean) => void;
   isRadioPlaying: boolean;
-  sponsoredVideos: MediaFile[];
+  tvPlaylist: MediaFile[];
+  tvAdverts: MediaFile[];
   activeTrackUrl: string | null;
   currentTrackName: string;
   adminMessages: AdminMessage[];
@@ -19,7 +20,8 @@ interface ListenerViewProps {
 
 const ListenerView: React.FC<ListenerViewProps> = ({
   news,
-  sponsoredVideos,
+  tvPlaylist,
+  tvAdverts,
   reports,
   adminMessages = [],
   isRadioPlaying,

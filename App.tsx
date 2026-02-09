@@ -25,6 +25,8 @@ const App: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [sponsoredMedia, setSponsoredMedia] = useState<MediaFile[]>([]);
+  const [tvPlaylist, setTvPlaylist] = useState<MediaFile[]>([]);
+  const [tvAdverts, setTvAdverts] = useState<MediaFile[]>([]);
   const [audioPlaylist, setAudioPlaylist] = useState<MediaFile[]>([]);
   const [adminMessages, setAdminMessages] = useState<AdminMessage[]>([]);
   const [reports, setReports] = useState<ListenerReport[]>([]);
@@ -86,7 +88,14 @@ const App: React.FC = () => {
 
       setNews(n || []);
       setLogs(l || []);
-      setSponsoredMedia(processedMedia.filter(item => item.type === 'video' || item.type === 'image'));
+      setNews(n || []);
+      setLogs(l || []);
+
+      const videos = processedMedia.filter(item => item.type === 'video');
+      setTvAdverts(videos.filter(v => v.folder === 'TV Adverts'));
+      setTvPlaylist(videos.filter(v => v.folder !== 'TV Adverts'));
+
+      setSponsoredMedia(processedMedia.filter(item => item.type === 'image')); // Keep images for other uses maybe?
       setAudioPlaylist(processedMedia.filter(item => item.type === 'audio'));
       setAdminMessages(msg || []);
       setReports(rep || []);
@@ -778,7 +787,10 @@ const App: React.FC = () => {
         {role === UserRole.LISTENER ? (
           <ListenerView
             news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
-            sponsoredVideos={sponsoredMedia} activeTrackUrl={activeTrackUrl}
+            // Pass filtered TV content
+            tvPlaylist={tvPlaylist}
+            tvAdverts={tvAdverts}
+            activeTrackUrl={activeTrackUrl}
             currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
             onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
           />
