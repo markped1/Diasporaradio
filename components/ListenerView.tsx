@@ -120,15 +120,14 @@ const ListenerView: React.FC<ListenerViewProps> = ({
 
 
       {/* 2. SPONSORED VIDEO / VISUALIZER */}
-      <SponsoredVideo
-        currentAd={currentAd}
-        isRadioPlaying={isRadioPlaying}
-        onTogglePlay={() => onStateChange(!isRadioPlaying)}
-        activeTrackUrl={activeTrackUrl}
-        currentTrackName={currentTrackName}
-        onPlayTrack={onPlayTrack}
-        adminMessages={adminMessages}
-      />
+      {currentAd && (
+        <SponsoredVideo
+          video={currentAd}
+          onEnded={() => {
+            // Optional: Handle ad completion logic if needed
+          }}
+        />
+      )}
 
 
       {/* 2. COMMUNITY DESK (Journalist HQ) */}
