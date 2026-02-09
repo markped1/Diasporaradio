@@ -53,12 +53,25 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
         if (videoRef.current) videoRef.current.play(); // Resume content
     };
 
+    const togglePlay = () => {
+        if (!videoRef.current) return;
+        if (isPlaying) {
+            videoRef.current.pause();
+        } else {
+            videoRef.current.play().catch(e => console.warn("Play failed", e));
+        }
+        setIsPlaying(!isPlaying);
+    };
+
     // 2. Main Video Effect
     useEffect(() => {
         if (videoRef.current && currentVideo && !isAdBreak) {
             videoRef.current.src = currentVideo.url;
-            videoRef.current.play().catch(e => console.warn("Autoplay blocked", e));
-            setIsPlaying(true);
+            videoRef.current.load(); // Ensure source is loaded
+            videoRef.current.play().catch(e => {
+                console.warn("Autoplay blocked", e);
+                setIsPlaying(false); // Update state if blocked
+            });
         }
     }, [currentVideo, isAdBreak]);
 
@@ -86,22 +99,41 @@ const TVPlayer: React.FC<TVPlayerProps> = ({ playlist, adverts, currentVideo, on
                 {/* REGULAR CONTENT PLAYER */}
                 <video
                     ref={videoRef}
-                    className="w-full h-full object-cover"
-                    controls={!isAdBreak}
+                    className="w-full h-full object-cover cursor-pointer"
+                    onClick={togglePlay}
+                    controls={false} // Use custom controls or allow overlay
                     onPlay={() => setIsPlaying(true)}
                     onPause={() => setIsPlaying(false)}
                     onEnded={onVideoEnd}
                     poster="https://via.placeholder.com/640x360.png?text=NDRTV+Signal+Offline"
                 />
 
+                {/* PLAY/PAUSE OVERLAY */}
+                {!isAdBreak && (
+                    <div
+                        onClick={togglePlay}
+                        className={`absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all cursor-pointer ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
+                    >
+                        <div className={`w-16 h-16 flex items-center justify-center rounded-full bg-green-600/80 text-white shadow-xl transform transition-transform ${isPlaying ? 'scale-75' : 'scale-100 animate-pulse'}`}>
+                            <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play text-xl ml-1'}`}></i>
+                        </div>
+                    </div>
+                )}
+
                 {/* TV BRANDING OVERLAY */}
-                <div className="absolute top-4 left-4 pointer-events-none">
+                <div className="absolute top-4 left-4 pointer-events-none flex flex-col space-y-1">
                     <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center">
+                        <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center shadow-lg">
                             <span className="text-white font-black text-[10px]">NDR</span>
                         </div>
-                        <span className="text-white/50 font-black text-xs shadow-black drop-shadow-md">TV</span>
+                        <span className="text-white font-black text-xs shadow-black drop-shadow-md">TV</span>
                     </div>
+                    {isPlaying && (
+                        <div className="flex items-center space-x-1.5 px-2 py-0.5 bg-red-600 rounded-full w-fit shadow-lg animate-pulse">
+                            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                            <span className="text-[7px] text-white font-black uppercase tracking-tighter">Live Stage</span>
+                        </div>
+                    )}
                 </div>
 
             </div>

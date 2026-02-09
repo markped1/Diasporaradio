@@ -35,6 +35,14 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   const [reportText, setReportText] = useState('');
   const [isReporting, setIsReporting] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState<MediaFile | null>(null);
+
+  // Initialize selected video
+  useEffect(() => {
+    if (tvPlaylist.length > 0 && !selectedVideo) {
+      setSelectedVideo(tvPlaylist[0]);
+    }
+  }, [tvPlaylist, selectedVideo]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -101,8 +109,8 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         <TVPlayer
           playlist={tvPlaylist}
           adverts={tvAdverts}
-          currentVideo={tvPlaylist[0]}
-          onPlayVideo={(v) => { /* Handle specific video selection if needed */ }}
+          currentVideo={selectedVideo || (tvPlaylist.length > 0 ? tvPlaylist[0] : undefined)}
+          onPlayVideo={(v) => setSelectedVideo(v)}
         />
       </section>
 
