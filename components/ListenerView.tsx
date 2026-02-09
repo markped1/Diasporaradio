@@ -117,122 +117,122 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         </button>
         <div className="absolute top-0 right-0 w-16 h-16 bg-green-50/50 rounded-full -mr-8 -mt-8"></div>
       </div>
-    </div>
-
-      {/* 2. SPONSORED VIDEO / VISUALIZER */ }
-  <SponsoredVideo
-    currentAd={currentAd}
-    isRadioPlaying={isRadioPlaying}
-    onTogglePlay={() => onStateChange(!isRadioPlaying)}
-    activeTrackUrl={activeTrackUrl}
-    currentTrackName={currentTrackName}
-    onPlayTrack={onPlayTrack}
-    adminMessages={adminMessages}
-  />
 
 
-  {/* 2. COMMUNITY DESK (Journalist HQ) */ }
-  <section className="space-y-1">
-    <div className="p-3 rounded-2xl border border-dashed border-green-200 bg-white/60 shadow-sm relative overflow-hidden group">
-      <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-all duration-700">
-        <i className="fas fa-microphone-alt text-4xl"></i>
-      </div>
+      {/* 2. SPONSORED VIDEO / VISUALIZER */}
+      <SponsoredVideo
+        currentAd={currentAd}
+        isRadioPlaying={isRadioPlaying}
+        onTogglePlay={() => onStateChange(!isRadioPlaying)}
+        activeTrackUrl={activeTrackUrl}
+        currentTrackName={currentTrackName}
+        onPlayTrack={onPlayTrack}
+        adminMessages={adminMessages}
+      />
 
-      {!isReporting ? (
-        <button
-          onClick={() => setIsReporting(true)}
-          className="w-full py-2.5 text-[7px] font-black text-[#008751] uppercase tracking-widest flex items-center justify-center bg-white rounded-xl border border-green-50 shadow-sm active:scale-95 transition-all"
-        >
-          <i className="fas fa-microphone-alt mr-2 text-red-500"></i> Contribute to the Diaspora Feed
-        </button>
-      ) : (
-        <form onSubmit={handleReport} className="space-y-2 animate-scale-in relative z-10">
-          <textarea
-            value={reportText}
-            onChange={(e) => setReportText(e.target.value)}
-            placeholder="Briefly describe what's happening near you..."
-            className="w-full bg-green-50 border border-green-100 rounded-xl p-3 text-[9px] h-20 outline-none focus:border-green-400 font-medium resize-none shadow-inner"
-          />
-          <div className="flex space-x-2">
-            <button type="submit" className="flex-1 bg-[#008751] text-white py-2.5 rounded-xl font-black text-[7px] uppercase tracking-widest shadow-md active:scale-95 transition-all">
-              Broadcast Report
+
+      {/* 2. COMMUNITY DESK (Journalist HQ) */}
+      <section className="space-y-1">
+        <div className="p-3 rounded-2xl border border-dashed border-green-200 bg-white/60 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-all duration-700">
+            <i className="fas fa-microphone-alt text-4xl"></i>
+          </div>
+
+          {!isReporting ? (
+            <button
+              onClick={() => setIsReporting(true)}
+              className="w-full py-2.5 text-[7px] font-black text-[#008751] uppercase tracking-widest flex items-center justify-center bg-white rounded-xl border border-green-50 shadow-sm active:scale-95 transition-all"
+            >
+              <i className="fas fa-microphone-alt mr-2 text-red-500"></i> Contribute to the Diaspora Feed
             </button>
-            <button type="button" onClick={() => setIsReporting(false)} className="px-5 bg-white text-green-700 py-2.5 rounded-xl text-[7px] font-black border border-green-100 active:scale-95 transition-all">
-              Cancel
+          ) : (
+            <form onSubmit={handleReport} className="space-y-2 animate-scale-in relative z-10">
+              <textarea
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+                placeholder="Briefly describe what's happening near you..."
+                className="w-full bg-green-50 border border-green-100 rounded-xl p-3 text-[9px] h-20 outline-none focus:border-green-400 font-medium resize-none shadow-inner"
+              />
+              <div className="flex space-x-2">
+                <button type="submit" className="flex-1 bg-[#008751] text-white py-2.5 rounded-xl font-black text-[7px] uppercase tracking-widest shadow-md active:scale-95 transition-all">
+                  Broadcast Report
+                </button>
+                <button type="button" onClick={() => setIsReporting(false)} className="px-5 bg-white text-green-700 py-2.5 rounded-xl text-[7px] font-black border border-green-100 active:scale-95 transition-all">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </section>
+
+      {/* 3. SONG REQUESTS / DEDICATIONS */}
+      <section className="space-y-1">
+        <div className="bg-white p-3 rounded-2xl border border-green-50 shadow-sm">
+          <h3 className="text-[7px] font-black uppercase text-green-900 mb-2 flex items-center">
+            <i className="fas fa-music mr-1.5 text-amber-500"></i> Request A Song / Dedication
+          </h3>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              placeholder="Artist - Song Title (Dedication...)"
+              className="flex-grow bg-green-50 border border-green-100 rounded-lg px-2 py-1.5 text-[8px] focus:outline-none focus:border-green-300"
+              id="songRequestInput"
+            />
+            <button
+              onClick={async () => {
+                const input = document.getElementById('songRequestInput') as HTMLInputElement;
+                if (input && input.value.trim()) {
+                  await dbService.addReport({
+                    id: Math.random().toString(36).substring(2, 9),
+                    reporterName: 'Listener Request',
+                    location: location,
+                    content: `REQUEST: ${input.value}`,
+                    timestamp: Date.now()
+                  });
+                  input.value = '';
+                  alert('Request Sent to Studio!');
+                }
+              }}
+              className="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-[7px] font-black uppercase shadow-sm active:scale-95"
+            >
+              Send
             </button>
           </div>
-        </form>
-      )}
-    </div>
-  </section>
+        </div>
+      </section>
 
-  {/* 3. SONG REQUESTS / DEDICATIONS */ }
-  <section className="space-y-1">
-    <div className="bg-white p-3 rounded-2xl border border-green-50 shadow-sm">
-      <h3 className="text-[7px] font-black uppercase text-green-900 mb-2 flex items-center">
-        <i className="fas fa-music mr-1.5 text-amber-500"></i> Request A Song / Dedication
-      </h3>
-      <div className="flex space-x-2">
-        <input
-          type="text"
-          placeholder="Artist - Song Title (Dedication...)"
-          className="flex-grow bg-green-50 border border-green-100 rounded-lg px-2 py-1.5 text-[8px] focus:outline-none focus:border-green-300"
-          id="songRequestInput"
-        />
-        <button
-          onClick={async () => {
-            const input = document.getElementById('songRequestInput') as HTMLInputElement;
-            if (input && input.value.trim()) {
-              await dbService.addReport({
-                id: Math.random().toString(36).substring(2, 9),
-                reporterName: 'Listener Request',
-                location: location,
-                content: `REQUEST: ${input.value}`,
-                timestamp: Date.now()
-              });
-              input.value = '';
-              alert('Request Sent to Studio!');
-            }
-          }}
-          className="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-[7px] font-black uppercase shadow-sm active:scale-95"
-        >
-          Send
-        </button>
-      </div>
-    </div>
-  </section>
-
-  {/* 5. LIVE COMMUNITY REPORTS */ }
-  <section className="space-y-2">
-    <div className="flex items-center justify-between px-1">
-      <h3 className="text-[7px] font-black uppercase text-green-600/40 tracking-[0.2em]">Live Community Reports</h3>
-      <span className="text-[6px] font-black text-red-500 flex items-center">
-        <span className="w-1 h-1 bg-red-500 rounded-full mr-1 animate-ping"></span> ON-AIR FEED
-      </span>
-    </div>
-    <div className="bg-white/60 border border-green-50 rounded-2xl p-3 max-h-[150px] overflow-y-auto no-scrollbar shadow-inner">
-      {reports.length > 0 ? (
-        <div className="space-y-3">
-          {reports.slice(0, 10).map((r) => (
-            <div key={r.id} className="bg-white p-2.5 rounded-xl border border-green-50 shadow-sm animate-scale-in">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[7px] font-black text-green-800 uppercase flex items-center">
-                  <i className="fas fa-map-marker-alt mr-1 text-red-500"></i> {r.location}
-                </span>
-                <span className="text-[6px] text-gray-400 font-mono">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-              <p className="text-[9px] text-green-950 leading-relaxed font-medium">"{r.content}"</p>
+      {/* 5. LIVE COMMUNITY REPORTS */}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-[7px] font-black uppercase text-green-600/40 tracking-[0.2em]">Live Community Reports</h3>
+          <span className="text-[6px] font-black text-red-500 flex items-center">
+            <span className="w-1 h-1 bg-red-500 rounded-full mr-1 animate-ping"></span> ON-AIR FEED
+          </span>
+        </div>
+        <div className="bg-white/60 border border-green-50 rounded-2xl p-3 max-h-[150px] overflow-y-auto no-scrollbar shadow-inner">
+          {reports.length > 0 ? (
+            <div className="space-y-3">
+              {reports.slice(0, 10).map((r) => (
+                <div key={r.id} className="bg-white p-2.5 rounded-xl border border-green-50 shadow-sm animate-scale-in">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[7px] font-black text-green-800 uppercase flex items-center">
+                      <i className="fas fa-map-marker-alt mr-1 text-red-500"></i> {r.location}
+                    </span>
+                    <span className="text-[6px] text-gray-400 font-mono">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <p className="text-[9px] text-green-950 leading-relaxed font-medium">"{r.content}"</p>
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            <div className="py-8 text-center opacity-30 flex flex-col items-center">
+              <i className="fas fa-broadcast-tower text-2xl mb-2 text-green-300"></i>
+              <span className="text-[7px] font-black uppercase tracking-widest">No community reports</span>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="py-8 text-center opacity-30 flex flex-col items-center">
-          <i className="fas fa-broadcast-tower text-2xl mb-2 text-green-300"></i>
-          <span className="text-[7px] font-black uppercase tracking-widest">No community reports</span>
-        </div>
-      )}
-    </div>
-  </section>
+      </section>
 
 
     </div >
