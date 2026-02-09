@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.midway_state (
     newsroomContent TEXT,
     activeVideoId TEXT,
     activeVideoUrl TEXT,
+    custom_folders JSONB DEFAULT '[]',
     broadcastPulse BIGINT,
     activeBroadcast JSONB,
     latest_news JSONB DEFAULT '[]',

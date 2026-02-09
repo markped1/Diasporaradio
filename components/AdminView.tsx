@@ -697,20 +697,29 @@ const AdminView: React.FC<AdminViewProps> = ({
           <div className="space-y-4">
             <div className="flex bg-[#008751]/5 p-1 rounded-xl border border-green-100 items-center justify-between">
               <div className="flex flex-grow space-x-1">
-                <button onClick={() => setMediaSubTab('audio')} className={`flex-grow py-2 text-[8px] font-black uppercase rounded-lg ${mediaSubTab === 'audio' ? 'bg-white text-[#008751] shadow-sm' : 'text-green-600/60'}`}>Tracks</button>
-                <button onClick={() => setMediaSubTab('video')} className={`flex-grow py-2 text-[8px] font-black uppercase rounded-lg ${mediaSubTab === 'video' ? 'bg-white text-[#008751] shadow-sm' : 'text-green-600/60'}`}>Ads</button>
+                <button onClick={() => setMediaSubTab('audio')} className={`flex-grow py-2 text-[10px] font-black uppercase rounded-xl transition-all ${mediaSubTab === 'audio' ? 'bg-[#008751] text-white shadow-md' : 'text-green-600/60 hover:text-green-600'}`}>Tracks</button>
+                <button onClick={() => setMediaSubTab('video')} className={`flex-grow py-2 text-[10px] font-black uppercase rounded-xl transition-all ${mediaSubTab === 'video' ? 'bg-[#008751] text-white shadow-md' : 'text-green-600/60 hover:text-green-600'}`}>Ads</button>
               </div>
-              <button
-                onClick={async () => {
-                  setStatusMsg('Refreshing Library...');
-                  await loadData();
-                  setTimeout(() => setStatusMsg(''), 1000);
-                }}
-                className="px-3 text-green-600 hover:text-green-800 transition-colors"
-                title="Refresh Library"
-              >
-                <i className="fas fa-sync-alt text-[10px]"></i>
-              </button>
+              <div className="flex items-center space-x-2 ml-2">
+                <button
+                  onClick={handleAddFolder}
+                  className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center"
+                  title="Create New Folder"
+                >
+                  <i className="fas fa-plus-circle mr-2"></i> New Folder
+                </button>
+                <button
+                  onClick={async () => {
+                    setStatusMsg('Refreshing Library...');
+                    await loadData();
+                    setTimeout(() => setStatusMsg(''), 1000);
+                  }}
+                  className="w-9 h-9 flex items-center justify-center bg-white border border-green-100 text-green-600 hover:text-green-800 rounded-xl transition-colors shadow-sm"
+                  title="Refresh Library"
+                >
+                  <i className="fas fa-sync-alt text-xs"></i>
+                </button>
+              </div>
             </div>
             {mediaSubTab === 'video' && (
               <div className="space-y-4">
@@ -759,14 +768,8 @@ const AdminView: React.FC<AdminViewProps> = ({
 
             {!currentFolder ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between px-2">
+                <div className="px-2">
                   <h3 className="text-[9px] font-black uppercase text-green-800/40 tracking-[0.2em]">Storage Folders</h3>
-                  <button
-                    onClick={handleAddFolder}
-                    className="text-[7px] font-black uppercase bg-green-50 text-green-600 px-3 py-1.5 rounded-lg border border-green-200 shadow-sm active:scale-95 transition-all"
-                  >
-                    <i className="fas fa-plus-circle mr-1"></i> New Folder
-                  </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
