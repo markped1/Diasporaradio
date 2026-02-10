@@ -7,7 +7,11 @@ class RadioReceiver {
     private config: RTCConfiguration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
         ]
     };
     private onStreamCallback: ((stream: MediaStream) => void) | null = null;
@@ -62,6 +66,12 @@ class RadioReceiver {
 
         this.pc.ontrack = (event) => {
             console.log("🎵 [Receiver] Received Remote Track", event.streams[0]);
+
+            event.streams[0].getAudioTracks().forEach(track => {
+                console.log(`🎵 [Receiver] Track: ${track.label}, Enabled: ${track.enabled}, Muted: ${track.muted}, State: ${track.readyState}`);
+                track.enabled = true; // Ensure enabled
+            });
+
             if (this.onStreamCallback && event.streams[0]) {
                 this.onStreamCallback(event.streams[0]);
             }

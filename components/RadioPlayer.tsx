@@ -137,11 +137,35 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     if (isPlaying) initAnalyser();
   }, [isPlaying, analyser]);
 
+  // Handle Broadcast Status Changes
+  useEffect(() => {
+    if (uiMode === 'listener') {
+      // If we are playing but the broadcast stops, we must stop.
+      if (isPlaying && !broadcast?.isPlaying) {
+        console.log("🛑 [RadioPlayer] Broadcast ended. Disconnecting...");
+        import('../core/RadioReceiver').then(m => m.radioReceiver.disconnect());
+        radioEngine.stop();
+        setIsPlaying(false);
+        setStatus('IDLE');
+        setErrorMessage("Broadcast Ended");
+      }
+    }
+  }, [broadcast?.isPlaying, isPlaying, uiMode]);
+
   const handlePlayPause = async () => {
     if (uiMode === 'listener') {
       onInteract?.();
 
       if (!isPlaying) {
+        // ONLY allow connection if broadcast is explicitly LIVE
+        if (!broadcast?.isPlaying) {
+          setErrorMessage("Station is Offline");
+          return;
+        }
+
+        // 📱 MOBILE UNLOCK: Prime the audio engine immediately on user click
+        radioEngine.resume();
+
         // LISTENER: Start WebRTC Receiver
         import('../core/RadioReceiver').then(m => {
           m.radioReceiver.setOnStream((stream) => {
@@ -149,6 +173,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
             radioEngine.playStream(stream);
             setIsPlaying(true);
             setStatus('PLAYING');
+            setErrorMessage("");
           });
           m.radioReceiver.connect();
           // Optimistic "Connecting" state
@@ -219,9 +244,9 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
           {/* STATUS RIBBON */}
           <div className="flex items-center space-x-2 bg-white/40 backdrop-blur-md px-3 py-1 rounded-full border border-green-100 shadow-sm z-20">
-            <div className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`}></div>
-            <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${isPlaying ? 'text-red-600' : 'text-gray-500'}`}>
-              {isPlaying ? 'Live on Air' : 'Radio Standby'}
+            <div className={`w-1.5 h-1.5 rounded-full ${broadcast?.isPlaying ? (isPlaying ? 'bg-red-500 animate-pulse' : 'bg-amber-500') : 'bg-gray-400'}`}></div>
+            <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${broadcast?.isPlaying ? (isPlaying ? 'text-red-600' : 'text-amber-600') : 'text-gray-500'}`}>
+              {broadcast?.isPlaying ? (isPlaying ? 'Live on Air' : 'Ready to Tune In') : 'Off Air'}
             </span>
           </div>
         </div>
@@ -245,9 +270,12 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         <div className="flex items-center space-x-6 w-full justify-center pt-1">
           <button
             onClick={handlePlayPause}
-            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all border-4 ${isPlaying
-              ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/10'
-              : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/10 hover:bg-green-700'
+            disabled={!broadcast?.isPlaying && !isPlaying}
+            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all border-4 ${!broadcast?.isPlaying && !isPlaying
+              ? 'bg-gray-300 border-gray-200 text-gray-500 cursor-not-allowed'
+              : isPlaying
+                ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/10'
+                : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/10 hover:bg-green-700'
               }`}
           >
             {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-xl"></i> :
@@ -268,7 +296,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
         </div>
 
         {/* Errors & Prompts */}
-        {!isPlaying && forcePlaying && status !== 'LOADING' && (
+        {!isPlaying && forcePlaying && status !== 'LOADING' && broadcast?.isPlaying && (
           <div className="px-4 py-2 bg-red-600/10 border border-red-500/20 rounded-xl animate-bounce">
             <p className="text-[7px] font-black text-red-500 uppercase tracking-widest flex items-center">
               <i className="fas fa-satellite-dish mr-2"></i> Tap to join live broadcast

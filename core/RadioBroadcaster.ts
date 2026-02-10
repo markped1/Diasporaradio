@@ -9,7 +9,11 @@ class RadioBroadcaster {
     private config: RTCConfiguration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
         ]
     };
 
@@ -24,7 +28,12 @@ class RadioBroadcaster {
             // @ts-ignore - captureStream is not in standard TS defs yet for Audio Elements sometimes
             const stream = (audio as any).captureStream ? (audio as any).captureStream() : (audio as any).mozCaptureStream();
             this.localStream = stream;
-            console.log("🎙️ [Broadcaster] Captured Local Stream", stream);
+
+            console.log("🎙️ [Broadcaster] Captured Local Stream ID:", stream.id);
+            stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
+                console.log(`🎙️ [Broadcaster] Track: ${track.label}, Enabled: ${track.enabled}, Muted: ${track.muted}, State: ${track.readyState}`);
+            });
+
         } catch (e) {
             console.error("❌ [Broadcaster] Failed to capture stream:", e);
         }

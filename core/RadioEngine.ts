@@ -63,6 +63,29 @@ class RadioEngine {
         this.onStatusChange = callback;
     }
 
+    /**
+     * Call this directly from a User Click Event to unlock Mobile Audio
+     */
+    public resume() {
+        if (!this.audio) this.getAudio();
+
+        // Mobile Safari Hack: Play and immediately pause to unlock the element
+        if (this.audio) {
+            // Check if context is needed (if we add WebAudio later)
+            // For now, just interactions
+            this.audio.load();
+            const playPromise = this.audio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    this.audio?.pause();
+                    console.log("MOBILE AUDIO UNLOCKED");
+                }).catch(error => {
+                    console.log("Mobile Autoplay Unlock prevented (expected if no src)", error);
+                });
+            }
+        }
+    }
+
     public play(url: string) {
         if (!url) {
             this.stop();
@@ -92,11 +115,25 @@ class RadioEngine {
     public playStream(stream: MediaStream) {
         const audio = this.getAudio();
         console.log("📡 [RadioEngine] Switching to Live WebRTC Stream");
+
+        // DIAGNOSTIC: Check Stream Tracks
+        stream.getAudioTracks().forEach(track => {
+            console.log(`🔍 [RadioEngine] Track: ${track.label}, Enabled: ${track.enabled}, Muted: ${track.muted}, State: ${track.readyState}`);
+            // Force enable just in case
+            track.enabled = true;
+        });
+
         audio.src = "";
         audio.srcObject = stream;
         this.currentUrl = "LIVE_STREAM";
+        audio.autoplay = true; // Ensure autoplay is triggered
 
-        audio.play().catch(err => {
+        // Sometimes strictly setting volume helps wake it up
+        audio.volume = 1.0;
+
+        audio.play().then(() => {
+            console.log("✅ [RadioEngine] Stream Play Promise Resolved");
+        }).catch(err => {
             console.error("📡 [RadioEngine] Stream Play failed:", err);
             this.notifyStatus('ERROR');
         });
