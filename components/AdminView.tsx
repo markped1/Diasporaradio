@@ -395,7 +395,15 @@ const AdminView: React.FC<AdminViewProps> = ({
 
                 {/* 🔴 MASTER BROADCAST TOGGLE */}
                 <button
-                  onClick={onToggleRadio}
+                  onClick={async () => {
+                    if (isRadioPlaying) {
+                      await onToggleRadio(); // Update DB State
+                      import('../core/RadioBroadcaster').then(m => m.radioBroadcaster.stopBroadcasting());
+                    } else {
+                      await onToggleRadio(); // Update DB State
+                      import('../core/RadioBroadcaster').then(m => m.radioBroadcaster.startBroadcasting());
+                    }
+                  }}
                   className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all border-4 ${isRadioPlaying
                     ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/20'
                     : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/20'

@@ -141,26 +141,29 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     if (uiMode === 'listener') {
       onInteract?.();
 
-      // Proactive play attempt to satisfy browser policies via direct user gesture
-      // FIX: Allow interaction even if URL is missing, to register the user gesture
       if (!isPlaying) {
-        if (broadcast?.activeTrackUrl) {
-          radioEngine.play(broadcast.activeTrackUrl);
-        } else if (broadcast?.isPlaying) {
-          // Admin says we are playing, but we have no URL yet
-          setErrorMessage("Waiting for Signal...");
-          setIsPlaying(true); // Optimistically set playing to show "Connecting" state
+        // LISTENER: Start WebRTC Receiver
+        import('../core/RadioReceiver').then(m => {
+          m.radioReceiver.setOnStream((stream) => {
+            console.log("🔥 [RadioPlayer] Stream Received! Playing...");
+            radioEngine.playStream(stream);
+            setIsPlaying(true);
+            setStatus('PLAYING');
+          });
+          m.radioReceiver.connect();
+          // Optimistic "Connecting" state
           setStatus('LOADING');
-        } else {
-          // Not playing and no URL - unlikely to happen if button is shown only when isPlaying/forcePlaying
-          setErrorMessage("No Active Broadcast");
-        }
+          setErrorMessage("Connecting to Studio...");
+        });
       } else {
+        // LISTENER: Stop WebRTC
+        import('../core/RadioReceiver').then(m => m.radioReceiver.disconnect());
         radioEngine.stop();
         setIsPlaying(false);
         setStatus('IDLE');
       }
     } else {
+      // ADMIN: Local Logic (Unchanged, Admin listens to their own local audio/preview)
       const nextState = !broadcast?.isPlaying;
       onStateChange(nextState);
 

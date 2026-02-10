@@ -90,3 +90,12 @@ export interface MidwayState {
   activeVideoUrl?: string | null; // Currently playing video URL
   custom_folders?: string[]; // Admin-defined music folders
 }
+
+export type SignalType = 'OFFER' | 'ANSWER' | 'ICE_CANDIDATE' | 'REQUEST_STREAM' | 'ADMIN_ACTIVE';
+
+export interface SignalingMessage {
+  type: SignalType;
+  senderId: string;
+  targetId: string; // 'ADMIN' or specific listener UUID
+  payload?: any; // SDP or ICE Candidate
+}

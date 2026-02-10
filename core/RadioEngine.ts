@@ -73,6 +73,7 @@ class RadioEngine {
 
         if (this.currentUrl !== url) {
             console.log(`📡 [RadioEngine] Loading new URL: ${url}`);
+            audio.srcObject = null; // Clear any stream
             audio.src = url;
             this.currentUrl = url;
             audio.load();
@@ -88,10 +89,24 @@ class RadioEngine {
         });
     }
 
+    public playStream(stream: MediaStream) {
+        const audio = this.getAudio();
+        console.log("📡 [RadioEngine] Switching to Live WebRTC Stream");
+        audio.src = "";
+        audio.srcObject = stream;
+        this.currentUrl = "LIVE_STREAM";
+
+        audio.play().catch(err => {
+            console.error("📡 [RadioEngine] Stream Play failed:", err);
+            this.notifyStatus('ERROR');
+        });
+    }
+
     public stop() {
         if (!this.audio) return;
         this.audio.pause();
         this.audio.src = ""; // Clear source to stop buffer
+        this.audio.srcObject = null; // Clear stream
         this.currentUrl = null;
         this.notifyStatus('IDLE');
     }
