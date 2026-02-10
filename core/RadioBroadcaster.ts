@@ -1,6 +1,6 @@
 
 import { signalingService } from '../services/SignalingService';
-import { radioEngine } from './RadioEngine';
+import { mediaEngine } from './MediaEngine';
 import { SignalingMessage } from '../types';
 
 class RadioBroadcaster {
@@ -9,28 +9,25 @@ class RadioBroadcaster {
     private config: RTCConfiguration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
+            { urls: 'stun: stun1.l.google.com:19302' },
+            { urls: 'stun: stun2.l.google.com:19302' },
+            { urls: 'stun: global.stun.twilio.com:3478' }
         ]
     };
 
     public startBroadcasting() {
-        // 🎙️ RECONSTRUCTION: Capture from the Unified Mixer, NOT just the audio element
-        const stream = radioEngine.getBroadcastStream();
+        const stream = mediaEngine.getBroadcastStream();
 
         if (!stream) {
-            console.error("❌ [Broadcaster] No broadcast stream available from Mixer");
+            console.error("❌ [Broadcaster] No broadcast stream available from MediaEngine");
             return;
         }
 
         this.localStream = stream;
-        console.log("🎙️ [Broadcaster] Captured Unified Mixer Stream ID:", stream.id);
+        console.log("🎙️ [Broadcaster] Captured MediaStream ID:", stream.id, "Tracks:", stream.getTracks().length);
 
-        stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
-            console.log(`🎙️ [Broadcaster] Track: ${track.label}, State: ${track.readyState}`);
+        stream.getTracks().forEach((track: MediaStreamTrack) => {
+            console.log(`🎙️ [Broadcaster] Track: ${track.kind} (${track.label}), State: ${track.readyState}`);
         });
 
         signalingService.initialize('ADMIN', (msg) => this.handleSignal(msg));
@@ -81,8 +78,14 @@ class RadioBroadcaster {
             }
         };
 
+        // Add both Audio and Video transceivers for flexibility
+        pc.addTransceiver('audio', { direction: 'sendonly' });
+        pc.addTransceiver('video', { direction: 'sendonly' });
+
         if (this.localStream) {
-            this.localStream.getTracks().forEach(track => pc.addTrack(track, this.localStream!));
+            this.localStream.getTracks().forEach(track => {
+                pc.addTrack(track, this.localStream!);
+            });
         }
 
         const offer = await pc.createOffer();

@@ -16,14 +16,6 @@ const isFirebaseReady = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "un
 
 export const app = isFirebaseReady ? initializeApp(firebaseConfig) : null;
 
-// Initialize Analytics (optional, with safe check for browser environment and successful initialization)
-export const analytics = (typeof window !== "undefined" && app) ? (
-    (() => {
-        try {
-            return getAnalytics(app);
-        } catch (e) {
-            console.warn("Firebase Analytics failed to initialize:", e);
-            return null;
-        }
-    })()
-) : null;
+// DEPRECATED: Disabled Analytics to prevent illegal media tracking collision (nt.getCurrentTime error)
+export const analytics = null;
+

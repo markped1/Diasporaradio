@@ -32,6 +32,8 @@ interface AdminViewProps {
   activeVideoUrl?: string | null;
   onStatusUpdate?: (msg: string) => void;
   broadcast?: MidwayState;
+  onModeChange?: (mode: 'RADIO' | 'TV') => void;
+  onStatusChange?: (status: 'LIVE' | 'OFFLINE') => void;
 }
 
 type Tab = 'command' | 'midway' | 'bulletin' | 'media' | 'inbox' | 'logs';
@@ -66,7 +68,9 @@ const AdminView: React.FC<AdminViewProps> = ({
   activeVideoId,
   activeVideoUrl,
   onStatusUpdate,
-  broadcast
+  broadcast,
+  onModeChange,
+  onStatusChange
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
@@ -304,7 +308,7 @@ const AdminView: React.FC<AdminViewProps> = ({
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-            <h3 className="text-[8px] font-black uppercase tracking-widest text-red-200">Diagnostics (v2.0)</h3>
+            <h3 className="text-[8px] font-black uppercase tracking-widest text-red-200">Diagnostics (v3.0 - RECONSTRUCTION)</h3>
           </div>
           <div className="flex flex-col space-y-2 mt-1">
             <div className={`px-2 py-1 rounded text-[6px] font-black border flex items-center space-x-1 ${apiHealth === 'HEALTHY' ? 'bg-green-500/20 border-green-500/50 text-green-200' :
@@ -393,25 +397,41 @@ const AdminView: React.FC<AdminViewProps> = ({
                   </h2>
                 </div>
 
-                {/* 🔴 MASTER BROADCAST TOGGLE */}
-                <button
-                  onClick={async () => {
-                    if (isRadioPlaying) {
-                      await onToggleRadio(); // Update DB State
-                      import('../core/RadioBroadcaster').then(m => m.radioBroadcaster.stopBroadcasting());
-                    } else {
-                      await onToggleRadio(); // Update DB State
-                      import('../core/RadioBroadcaster').then(m => m.radioBroadcaster.startBroadcasting());
-                    }
-                  }}
-                  className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all border-4 ${isRadioPlaying
-                    ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/20'
-                    : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/20'
-                    }`}
-                >
-                  <i className={`fas ${isRadioPlaying ? 'fa-stop-circle' : 'fa-play-circle'} mr-2 text-sm`}></i>
-                  {isRadioPlaying ? 'Stop Master Broadcast' : 'Start Master Broadcast'}
-                </button>
+                {/* 🔴 MASTER BROADCAST CONTROL (V3) */}
+                <div className="w-full space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => onStatusChange?.(broadcast?.broadcastStatus === 'LIVE' ? 'OFFLINE' : 'LIVE')}
+                      className={`py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-b-8 shadow-2xl active:scale-95 active:border-b-0 ${broadcast?.broadcastStatus === 'LIVE'
+                        ? 'bg-red-600 border-red-800 text-white'
+                        : 'bg-green-600 border-green-800 text-green-100/40 hover:text-white'
+                        }`}
+                    >
+                      <i className={`fas ${broadcast?.broadcastStatus === 'LIVE' ? 'fa-stop' : 'fa-play'} mr-2 text-sm`}></i>
+                      {broadcast?.broadcastStatus === 'LIVE' ? 'End Broadcast' : 'Start Global Live'}
+                    </button>
+
+                    <button
+                      onClick={() => onModeChange?.(broadcast?.broadcastMode === 'TV' ? 'RADIO' : 'TV')}
+                      className={`py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-b-8 shadow-2xl active:scale-95 active:border-b-0 ${broadcast?.broadcastMode === 'TV'
+                        ? 'bg-blue-600 border-blue-800 text-white'
+                        : 'bg-amber-500 border-amber-700 text-white'
+                        }`}
+                    >
+                      <i className={`fas ${broadcast?.broadcastMode === 'TV' ? 'fa-radio' : 'fa-tv'} mr-2 text-sm`}></i>
+                      {broadcast?.broadcastMode === 'TV' ? 'Switch Mode: RADIO' : 'Switch Mode: TV'}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col items-center space-y-2 opacity-60">
+                    <span className="text-[7px] font-black text-green-800 uppercase tracking-[0.2em]">Broadcast Integrity: Standard</span>
+                    <div className="flex space-x-1">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                        <div key={i} className={`w-0.5 h-2 rounded-full ${broadcast?.broadcastStatus === 'LIVE' ? 'bg-green-500 animate-pulse' : 'bg-gray-200'}`} style={{ animationDelay: `${i * 0.1}s` }}></div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
                 <div className="flex flex-col space-y-1">
                   <span className="text-[7px] font-black text-green-800/40 uppercase tracking-[0.3em]">Master Engine Status</span>

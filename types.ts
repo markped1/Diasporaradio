@@ -89,6 +89,8 @@ export interface MidwayState {
   activeVideoId?: string | null; // Currently playing video ID
   activeVideoUrl?: string | null; // Currently playing video URL
   custom_folders?: string[]; // Admin-defined music folders
+  broadcastStatus?: 'LIVE' | 'OFFLINE';
+  broadcastMode?: 'RADIO' | 'TV';
 }
 
 export type SignalType = 'OFFER' | 'ANSWER' | 'ICE_CANDIDATE' | 'REQUEST_STREAM' | 'ADMIN_ACTIVE';

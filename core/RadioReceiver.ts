@@ -7,11 +7,9 @@ class RadioReceiver {
     private config: RTCConfiguration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
+            { urls: 'stun: stun1.l.google.com:19302' },
+            { urls: 'stun: stun2.l.google.com:19302' },
+            { urls: 'stun: global.stun.twilio.com:3478' }
         ]
     };
     private onStreamCallback: ((stream: MediaStream) => void) | null = null;
@@ -21,7 +19,7 @@ class RadioReceiver {
     }
 
     public connect() {
-        console.log("🎧 [Receiver] Connecting to Radio Network...");
+        console.log("🎧 [Receiver] Connecting to Broadcast Network...");
 
         signalingService.initialize('LISTENER', async (msg) => {
             if (msg.type === 'OFFER') {
@@ -37,11 +35,10 @@ class RadioReceiver {
                 }
             } else if (msg.type === 'ADMIN_ACTIVE') {
                 console.log("📡 [Receiver] Admin is Active, requesting stream...");
-                this.requestStream(); // Auto-reconnect if needed
+                this.requestStream();
             }
         });
 
-        // Initial Request
         this.requestStream();
     }
 
@@ -59,25 +56,22 @@ class RadioReceiver {
 
         this.pc.onicecandidate = (event) => {
             if (event.candidate) {
-                // Send candidate to Admin
                 signalingService.sendSignal('ADMIN', 'ICE_CANDIDATE', event.candidate);
             }
         };
 
         this.pc.ontrack = (event) => {
-            console.log("🎵 [Receiver] Received Remote Track", event.streams[0]);
+            const stream = event.streams[0];
+            console.log("🎵 [Receiver] Received Remote Track", event.track.kind, "Stream Tracks:", stream?.getTracks().length);
 
-            event.streams[0].getAudioTracks().forEach(track => {
-                console.log(`🎵 [Receiver] Track: ${track.label}, Enabled: ${track.enabled}, Muted: ${track.muted}, State: ${track.readyState}`);
-                track.enabled = true; // Ensure enabled
-            });
-
-            if (this.onStreamCallback && event.streams[0]) {
-                this.onStreamCallback(event.streams[0]);
+            if (this.onStreamCallback && stream) {
+                this.onStreamCallback(stream);
             }
         };
 
+        // Pre-create transceivers for both Audio and Video
         this.pc.addTransceiver('audio', { direction: 'recvonly' });
+        this.pc.addTransceiver('video', { direction: 'recvonly' });
 
         await this.pc.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await this.pc.createAnswer();

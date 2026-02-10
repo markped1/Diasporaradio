@@ -1,12 +1,12 @@
 
 import { useEffect } from 'react';
 import { useBroadcast } from '../context/BroadcastContext';
-import { radioEngine } from '../core/RadioEngine';
+import { mediaEngine } from '../core/MediaEngine';
 
 /**
  * useListenerAudio
  * Accepts listenerHasPressedPlay as an argument.
- * Drives the RadioEngine based on broadcast state and consent.
+ * Drives the MediaEngine based on broadcast state and consent.
  */
 export const useListenerAudio = (hasInteracted: boolean, role: string) => {
     const { broadcast } = useBroadcast();
@@ -33,10 +33,11 @@ export const useListenerAudio = (hasInteracted: boolean, role: string) => {
 
         if (isLive && hasInteracted && streamUrl) {
             console.log(`🎵 [useListenerAudio] -> ADMIN EXECUTE PLAY: ${streamUrl}`);
-            radioEngine.play(streamUrl);
+            mediaEngine.play(streamUrl);
         } else if (!isLive || !streamUrl) {
             console.log(`🎵 [useListenerAudio] -> ADMIN EXECUTE STOP`);
-            radioEngine.stop();
+            mediaEngine.stop();
         }
     }, [broadcast?.isPlaying, broadcast?.activeTrackUrl, hasInteracted, role]);
 };
+

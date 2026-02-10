@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useBroadcast } from './context/BroadcastContext';
 import { useListenerAudio } from './hooks/useListenerAudio';
-import { radioEngine } from './core/RadioEngine';
+import { mediaEngine } from './core/MediaEngine';
 import { radioBroadcaster } from './core/RadioBroadcaster';
 import { supabase } from './services/supabaseClient';
 import ListenerView from './components/ListenerView';
@@ -47,6 +47,8 @@ const App: React.FC = () => {
   // Listeners stay silent until they click 'Tune In' (WebRTC Receiver)
   useListenerAudio(hasInteracted, role);
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
+  const [broadcastStatus, setBroadcastStatus] = useState<'LIVE' | 'OFFLINE'>('OFFLINE');
+  const [broadcastMode, setBroadcastMode] = useState<'RADIO' | 'TV'>('RADIO');
   const [expandedMedia, setExpandedMedia] = useState<'radio' | 'video' | 'none'>('none');
 
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
@@ -136,8 +138,8 @@ const App: React.FC = () => {
         setIsDucking(true);
         setDuckingType(type);
 
-        // 🔥 NEW: Pass directly to the unified RadioEngine mixer
-        await radioEngine.playPCM(audioData);
+        // 🔥 NEW: Pass directly to the unified MediaEngine mixer
+        await mediaEngine.playPCM(audioData);
 
         setIsDucking(false);
         setDuckingType(null);
@@ -265,7 +267,7 @@ const App: React.FC = () => {
 
     const interactionHandler = () => {
       setHasInteracted(true);
-      radioEngine.resume(); // Unlocks both Audio Element AND AudioContext
+      mediaEngine.resume(); // Unlocks both Audio Element AND AudioContext
     };
     window.addEventListener('click', interactionHandler, { once: true });
     return () => {
@@ -282,6 +284,11 @@ const App: React.FC = () => {
       if (broadcast.activeVideoId !== undefined) setActiveVideoId(broadcast.activeVideoId);
       if (broadcast.activeVideoUrl !== undefined) setActiveVideoUrl(broadcast.activeVideoUrl);
       if (broadcast.activeFolder !== undefined) setActiveFolder(broadcast.activeFolder);
+      if (broadcast.broadcastStatus !== undefined) setBroadcastStatus(broadcast.broadcastStatus);
+      if (broadcast.broadcastMode !== undefined) {
+        setBroadcastMode(broadcast.broadcastMode);
+        mediaEngine.setMode(broadcast.broadcastMode);
+      }
 
       // 🔊 Metadata Sync for UI Only (Ticker, Icons)
       // Autonomous audio triggers for listeners are now REMOVED to follow Rule #1
@@ -341,7 +348,7 @@ const App: React.FC = () => {
         });
 
         // 2. IMMEDIATE FEEDBACK for Admin
-        if (broadcastUrl) radioEngine.play(broadcastUrl);
+        if (broadcastUrl) mediaEngine.play(broadcastUrl);
       }
     }
   }, [broadcast?.activeTrackId, isShuffle, activeFolder, role, sponsoredMedia]);
@@ -365,7 +372,7 @@ const App: React.FC = () => {
       });
 
       // IMMEDIATE FEEDBACK for Admin
-      if (!isLocalBlob) radioEngine.play(track.url);
+      if (!isLocalBlob) mediaEngine.play(track.url);
     }
   };
 
@@ -470,7 +477,7 @@ const App: React.FC = () => {
   const playPing = async () => {
     console.log("Manual Sound Wake-up (Ping) requested...");
     try {
-      radioEngine.resume(); // Use the unified engine resume
+      mediaEngine.resume(); // Use the unified engine resume
 
       // We can play a simple PCM ping through the mixer to verify
       const frequency = 440;
@@ -662,7 +669,7 @@ const App: React.FC = () => {
             onPlayTrack={async (t) => {
               setHasInteracted(true);
               // 1. Admin local feedback
-              if (t.url) radioEngine.play(t.url);
+              if (t.url) mediaEngine.play(t.url);
 
               // 2. Global Sync (Assuming t.url is already a valid Cloud URL from the new upload flow)
               await dbService.updateMidwayState({
@@ -804,6 +811,21 @@ const App: React.FC = () => {
             activeVideoId={activeVideoId}
             activeVideoUrl={activeVideoUrl}
             onStatusUpdate={setStatusMsg}
+            onModeChange={async (mode) => {
+              await dbService.updateMidwayState({ broadcastMode: mode });
+              mediaEngine.setMode(mode);
+            }}
+            onStatusChange={async (status) => {
+              const isLive = status === 'LIVE';
+              await dbService.updateMidwayState({ broadcastStatus: status, isPlaying: isLive });
+
+              if (isLive) {
+                radioBroadcaster.startBroadcasting();
+              } else {
+                radioBroadcaster.stopBroadcasting();
+                mediaEngine.stop();
+              }
+            }}
           />
         )}
       </main>
@@ -816,7 +838,7 @@ const App: React.FC = () => {
           <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center"><i className="fab fa-whatsapp text-[10px] text-green-950"></i></div>
         </div>
         <p className="text-[7.5px] font-black uppercase tracking-[0.2em] text-green-950">{APP_NAME}</p>
-        <p className="text-[6.5px] text-green-950/50 uppercase tracking-[0.4em]">Designed by {DESIGNER_NAME} &bull; v2.5.0</p>
+        <p className="text-[6.5px] text-green-950/50 uppercase tracking-[0.4em]">Designed by {DESIGNER_NAME} &bull; v3.0.0</p>
       </footer>
 
       {showAuth && <PasswordModal onClose={() => setShowAuth(false)} onSuccess={() => { setRole(UserRole.ADMIN); setShowAuth(false); }} />}
@@ -872,7 +894,7 @@ const DiagnosticOverlay: React.FC<{
         </div>
         <div className="flex justify-between">
           <span>Architecture:</span>
-          <span className="text-white">REAL RADIO V2</span>
+          <span className="text-white">V3 UNIFIED (RECONSTRUCTED)</span>
         </div>
 
         <div className="pt-2 border-t border-white/5">
