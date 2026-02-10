@@ -168,280 +168,279 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
         // LISTENER: Start WebRTC Receiver
         import('../core/RadioReceiver').then(m => {
-          import('../core/RadioReceiver').then(m => {
-            m.radioReceiver.setOnStream((stream) => {
-              console.log("🔥 [RadioPlayer] Stream Received! Playing...");
-              radioEngine.playStream(stream);
-              setIsPlaying(true);
-              setStatus('PLAYING');
-              setErrorMessage("");
-            });
-            m.radioReceiver.connect();
-            // Optimistic "Connecting" state
-            setStatus('LOADING');
-            setErrorMessage("Connecting to Studio...");
+          m.radioReceiver.setOnStream((stream) => {
+            console.log("🔥 [RadioPlayer] Stream Received! Playing...");
+            radioEngine.playStream(stream);
+            setIsPlaying(true);
+            setStatus('PLAYING');
+            setErrorMessage("");
           });
-        } else {
-          // LISTENER: Stop WebRTC
-          import('../core/RadioReceiver').then(m => m.radioReceiver.disconnect());
-          radioEngine.stop();
-          setIsPlaying(false);
+          m.radioReceiver.connect();
+          // Optimistic "Connecting" state
+          setStatus('LOADING');
+          setErrorMessage("Connecting to Studio...");
+        });
+      } else {
+        // LISTENER: Stop WebRTC
+        import('../core/RadioReceiver').then(m => m.radioReceiver.disconnect());
+        radioEngine.stop();
+        setIsPlaying(false);
         setStatus('IDLE');
-        }
-    } else {
-        // ADMIN: Local Logic (Unchanged, Admin listens to their own local audio/preview)
-        const nextState = !broadcast?.isPlaying;
-        onStateChange(nextState);
-
-        // For Admin: Local immediate feedback
-        if (nextState && broadcast?.activeTrackUrl) {
-          radioEngine.play(broadcast.activeTrackUrl);
-        } else if (!nextState) {
-          radioEngine.stop();
-        }
       }
-    };
+    } else {
+      // ADMIN: Local Logic (Unchanged, Admin listens to their own local audio/preview)
+      const nextState = !broadcast?.isPlaying;
+      onStateChange(nextState);
 
-    const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-    const formatTime = (time: number) => {
-      const mins = Math.floor(time / 60);
-      const secs = Math.floor(time % 60);
-      return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
+      // For Admin: Local immediate feedback
+      if (nextState && broadcast?.activeTrackUrl) {
+        radioEngine.play(broadcast.activeTrackUrl);
+      } else if (!nextState) {
+        radioEngine.stop();
+      }
+    }
+  };
 
-    const toggleExpand = () => onExpandToggle?.(!isExpanded);
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const formatTime = (time: number) => {
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
-    if (uiMode === 'headless') return null;
+  const toggleExpand = () => onExpandToggle?.(!isExpanded);
 
-    // 🎧 LISTENER CONSOLE UI (REFINED LOGO + DISPLAY)
-    if (uiMode === 'listener') {
-      return (
-        <div className={`w-full flex flex-col items-center space-y-4 animate-scale-in pb-2 ${isExpanded ? 'fixed inset-0 z-[60] bg-[#f0fff4] p-6 lg:relative lg:inset-auto lg:p-0' : ''}`}>
-          {/* EXPAND/CLOSE BUTTONS (MOBILE ONLY) */}
-          {!isExpanded ? (
-            <div className="w-full flex justify-end px-2 translate-y-2">
-              <button onClick={toggleExpand} className="bg-green-100/80 backdrop-blur-sm text-green-800 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-green-200 shadow-sm transition-all hover:bg-green-200 active:scale-95">
-                <i className="fas fa-expand-alt mr-1"></i> Full Console
-              </button>
+  if (uiMode === 'headless') return null;
+
+  // 🎧 LISTENER CONSOLE UI (REFINED LOGO + DISPLAY)
+  if (uiMode === 'listener') {
+    return (
+      <div className={`w-full flex flex-col items-center space-y-4 animate-scale-in pb-2 ${isExpanded ? 'fixed inset-0 z-[60] bg-[#f0fff4] p-6 lg:relative lg:inset-auto lg:p-0' : ''}`}>
+        {/* EXPAND/CLOSE BUTTONS (MOBILE ONLY) */}
+        {!isExpanded ? (
+          <div className="w-full flex justify-end px-2 translate-y-2">
+            <button onClick={toggleExpand} className="bg-green-100/80 backdrop-blur-sm text-green-800 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-green-200 shadow-sm transition-all hover:bg-green-200 active:scale-95">
+              <i className="fas fa-expand-alt mr-1"></i> Full Console
+            </button>
+          </div>
+        ) : (
+          <div className="w-full flex justify-end px-2 mb-4">
+            <button onClick={toggleExpand} className="bg-white text-green-800 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-200 shadow-md">
+              <i className="fas fa-compress-alt mr-2"></i> Minimal Screen
+            </button>
+          </div>
+        )}
+
+        {/* REFINED LOGO DISPLAY SECTION */}
+        <div className="relative flex flex-col items-center justify-center space-y-4 w-full pt-2">
+          {/* Animated Glow behind Logo when playing */}
+          {isPlaying && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-green-500/20 rounded-full blur-3xl animate-pulse"></div>
+          )}
+
+          <div className="relative z-10 scale-90 transition-transform duration-500">
+            <Logo size="lg" analyser={analyser} isPlaying={isPlaying} />
+          </div>
+
+          {/* STATUS RIBBON */}
+          <div className="flex items-center space-x-2 bg-white/40 backdrop-blur-md px-3 py-1 rounded-full border border-green-100 shadow-sm z-20">
+            <div className={`w-1.5 h-1.5 rounded-full ${broadcast?.isPlaying ? (isPlaying ? 'bg-red-500 animate-pulse' : 'bg-amber-500') : 'bg-gray-400'}`}></div>
+            <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${broadcast?.isPlaying ? (isPlaying ? 'text-red-600' : 'text-amber-600') : 'text-gray-500'}`}>
+              {broadcast?.isPlaying ? (isPlaying ? 'Live on Air' : 'Ready to Tune In') : 'Off Air'}
+            </span>
+          </div>
+        </div>
+
+        {/* TRACK DISPLAY (MATCHES ADMIN STYLE) */}
+        <div className="w-full max-w-sm bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-green-100 shadow-sm relative overflow-hidden group">
+          <div className="flex flex-col items-center space-y-1 text-center relative z-10">
+            {/* Micro Progress Line - Redesigned for cleaner look */}
+            <div className="w-full flex items-center space-x-3 mt-1">
+              <span className="text-[7px] font-mono text-green-700/60 font-black">{formatTime(currentTime)}</span>
+              <div className="flex-grow h-1.5 bg-green-100/50 rounded-full overflow-hidden border border-green-200/30">
+                <div className="h-full bg-[#008751] transition-all duration-300 shadow-[0_0_8px_rgba(0,135,81,0.4)]" style={{ width: `${progress}%` }}></div>
+              </div>
+              <span className="text-[7px] font-mono text-green-700/60 font-black">{formatTime(duration)}</span>
             </div>
-          ) : (
-            <div className="w-full flex justify-end px-2 mb-4">
-              <button onClick={toggleExpand} className="bg-white text-green-800 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-200 shadow-md">
-                <i className="fas fa-compress-alt mr-2"></i> Minimal Screen
+            <p className="text-[6px] font-black text-green-800/20 uppercase tracking-[0.4em] mt-1">Dynamic Signal Monitoring</p>
+          </div>
+        </div>
+
+        {/* REFINED CONTROLS (OPTIMIZED HEIGHT) */}
+        <div className="flex items-center space-x-6 w-full justify-center pt-1">
+          <button
+            onClick={handlePlayPause}
+            disabled={!broadcast?.isPlaying && !isPlaying}
+            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all border-4 ${!broadcast?.isPlaying && !isPlaying
+              ? 'bg-gray-300 border-gray-200 text-gray-500 cursor-not-allowed'
+              : isPlaying
+                ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/10'
+                : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/10 hover:bg-green-700'
+              }`}
+          >
+            {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-xl"></i> :
+              isPlaying ? <i className="fas fa-pause text-2xl"></i> : <i className="fas fa-play text-2xl ml-1"></i>}
+          </button>
+
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center space-x-2">
+              <i className="fas fa-volume-up text-green-600/40 text-[9px]"></i>
+              <span className="text-[7px] font-black text-green-900/40 uppercase tracking-widest">Gain: {Math.round(volume * 100)}%</span>
+            </div>
+            <input
+              type="range" min="0" max="1" step="0.01" value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              className="w-28 h-1 bg-green-100 rounded-full appearance-none accent-[#008751] cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* Errors & Prompts */}
+        {!isPlaying && forcePlaying && status !== 'LOADING' && broadcast?.isPlaying && (
+          <div className="px-4 py-2 bg-red-600/10 border border-red-500/20 rounded-xl animate-bounce">
+            <p className="text-[7px] font-black text-red-500 uppercase tracking-widest flex items-center">
+              <i className="fas fa-satellite-dish mr-2"></i> Tap to join live broadcast
+            </p>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-100 px-4 py-2 rounded-xl">
+            <p className="text-[7px] font-black text-red-600 text-center uppercase tracking-wide">{errorMessage}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (uiMode === 'headless') return null;
+
+  return (
+    <div className="flex flex-col items-center justify-center space-y-2 w-full">
+      <Logo size="lg" analyser={analyser} isPlaying={isPlaying} />
+
+      <div className="w-full px-8 -mt-10 relative z-20 opacity-0 pointer-events-none">
+        {/* Hidden internal progress bar, replaced by premium display */}
+        <div className="h-1 w-full bg-green-100 rounded-full overflow-hidden">
+          <div className="h-full bg-[#008751] transition-all duration-300" style={{ width: `${progress}%` }}></div>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center space-y-3 relative z-20 w-full px-8">
+        {/* 🔥 PREMIUM RADIO DISPLAY */}
+        <div className="w-full bg-green-950/90 backdrop-blur-md rounded-2xl border-2 border-green-500/30 p-4 shadow-2xl relative overflow-hidden group">
+          {/* Signal Pulse Background */}
+          {isPlaying && (
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/10 rounded-full -mr-16 -mt-16 animate-ping pointer-events-none"></div>
+          )}
+
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex flex-col">
+              <div className="flex items-center space-x-2">
+                <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-red-500 animate-pulse' : 'bg-gray-600'}`}></span>
+                <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${isPlaying ? 'text-red-400' : 'text-gray-400'}`}>
+                  {isPlaying ? 'ON AIR' : 'OFF AIR'}
+                </span>
+              </div>
+              <span className="text-[6px] font-bold text-green-300/50 uppercase tracking-widest mt-1">98.5 MHZ | DIASPORA RELAY</span>
+            </div>
+            {status === 'LOADING' && <i className="fas fa-circle-notch fa-spin text-green-400 text-[10px]"></i>}
+          </div>
+
+          <div className="space-y-1">
+            <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
+              {activeFolder ? `REELING: ${activeFolder}` : (currentTrackName || 'NDR RADIO')}
+            </h4>
+            <div className="flex items-center space-x-2">
+              <span className="text-[7px] font-mono text-green-400/80">{formatTime(currentTime)}</span>
+              <div className="flex-grow h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-green-400 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+              </div>
+              <span className="text-[7px] font-mono text-green-400/80">{formatTime(duration)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Message */}
+        {(errorMessage || radioEngine.getLastError()) && (
+          <button
+            onClick={() => { setErrorMessage(''); handlePlayPause(); }}
+            className="bg-red-500/20 px-4 py-2 rounded-xl border border-red-500/40 w-full animate-bounce hover:bg-red-500/30 transition-all"
+          >
+            <div className="flex flex-col items-center">
+              <p className="text-[8px] font-black text-red-500 uppercase tracking-wide">
+                {radioEngine.getLastError() || errorMessage}
+              </p>
+              <p className="text-[6px] text-red-400/60 uppercase mt-1">Tap To Join Live / Retry</p>
+            </div>
+          </button>
+        )}
+
+        {/* Controls Grid */}
+        <div className="flex items-center justify-between w-full px-2 relative">
+          {/* JOIN BROADCAST OVERLAY (FOR LISTENERS) */}
+          {forcePlaying && !isPlaying && status !== 'LOADING' && (
+            <div className="absolute inset-x-0 -top-20 flex flex-col items-center space-y-2 z-50 animate-bounce">
+              <span className="text-[7px] font-black text-red-500 bg-white px-3 py-1 rounded-full shadow-sm border border-red-100 uppercase tracking-widest">Signal Detected!</span>
+              <button
+                onClick={() => { handlePlayPause(); if (!isExpanded) onExpandToggle?.(true); }}
+                className="bg-red-500 text-white px-6 py-3 rounded-full font-black text-[9px] uppercase tracking-widest shadow-2xl border-2 border-white/20 flex items-center space-x-2 active:scale-95 transition-all"
+              >
+                <i className="fas fa-satellite-dish"></i>
+                <span>Tap to Tune In Live</span>
               </button>
             </div>
           )}
 
-          {/* REFINED LOGO DISPLAY SECTION */}
-          <div className="relative flex flex-col items-center justify-center space-y-4 w-full pt-2">
-            {/* Animated Glow behind Logo when playing */}
-            {isPlaying && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-green-500/20 rounded-full blur-3xl animate-pulse"></div>
-            )}
-
-            <div className="relative z-10 scale-90 transition-transform duration-500">
-              <Logo size="lg" analyser={analyser} isPlaying={isPlaying} />
-            </div>
-
-            {/* STATUS RIBBON */}
-            <div className="flex items-center space-x-2 bg-white/40 backdrop-blur-md px-3 py-1 rounded-full border border-green-100 shadow-sm z-20">
-              <div className={`w-1.5 h-1.5 rounded-full ${broadcast?.isPlaying ? (isPlaying ? 'bg-red-500 animate-pulse' : 'bg-amber-500') : 'bg-gray-400'}`}></div>
-              <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${broadcast?.isPlaying ? (isPlaying ? 'text-red-600' : 'text-amber-600') : 'text-gray-500'}`}>
-                {broadcast?.isPlaying ? (isPlaying ? 'Live on Air' : 'Ready to Tune In') : 'Off Air'}
-              </span>
-            </div>
-          </div>
-
-          {/* TRACK DISPLAY (MATCHES ADMIN STYLE) */}
-          <div className="w-full max-w-sm bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-green-100 shadow-sm relative overflow-hidden group">
-            <div className="flex flex-col items-center space-y-1 text-center relative z-10">
-              {/* Micro Progress Line - Redesigned for cleaner look */}
-              <div className="w-full flex items-center space-x-3 mt-1">
-                <span className="text-[7px] font-mono text-green-700/60 font-black">{formatTime(currentTime)}</span>
-                <div className="flex-grow h-1.5 bg-green-100/50 rounded-full overflow-hidden border border-green-200/30">
-                  <div className="h-full bg-[#008751] transition-all duration-300 shadow-[0_0_8px_rgba(0,135,81,0.4)]" style={{ width: `${progress}%` }}></div>
-                </div>
-                <span className="text-[7px] font-mono text-green-700/60 font-black">{formatTime(duration)}</span>
-              </div>
-              <p className="text-[6px] font-black text-green-800/20 uppercase tracking-[0.4em] mt-1">Dynamic Signal Monitoring</p>
-            </div>
-          </div>
-
-          {/* REFINED CONTROLS (OPTIMIZED HEIGHT) */}
-          <div className="flex items-center space-x-6 w-full justify-center pt-1">
+          <div className="flex items-center space-x-4">
             <button
               onClick={handlePlayPause}
-              disabled={!broadcast?.isPlaying && !isPlaying}
-              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all border-4 ${!broadcast?.isPlaying && !isPlaying
-                ? 'bg-gray-300 border-gray-200 text-gray-500 cursor-not-allowed'
-                : isPlaying
-                  ? 'bg-red-600 border-red-500/20 text-white shadow-red-900/10'
-                  : 'bg-[#008751] border-green-500/20 text-white shadow-green-900/10 hover:bg-green-700'
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all ${isPlaying ? 'bg-red-500 text-white border-4 border-red-400/20' : 'bg-green-600 text-white border-4 border-green-500/20'
                 }`}
             >
-              {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-xl"></i> :
-                isPlaying ? <i className="fas fa-pause text-2xl"></i> : <i className="fas fa-play text-2xl ml-1"></i>}
+              {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-lg"></i> :
+                isPlaying ? <i className="fas fa-pause text-xl"></i> : <i className="fas fa-play text-xl ml-1"></i>}
             </button>
 
-            <div className="flex flex-col space-y-2">
+            {/* Local Volume for Listeners */}
+            <div className="flex flex-col space-y-1">
               <div className="flex items-center space-x-2">
-                <i className="fas fa-volume-up text-green-600/40 text-[9px]"></i>
-                <span className="text-[7px] font-black text-green-900/40 uppercase tracking-widest">Gain: {Math.round(volume * 100)}%</span>
+                <i className="fas fa-volume-up text-green-600 text-[8px]"></i>
+                <span className="text-[6px] font-black text-green-700 uppercase">{Math.round(volume * 100)}%</span>
               </div>
               <input
                 type="range" min="0" max="1" step="0.01" value={volume}
                 onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-28 h-1 bg-green-100 rounded-full appearance-none accent-[#008751] cursor-pointer"
+                className="w-24 h-1 bg-green-100 rounded-lg appearance-none accent-green-600 cursor-pointer"
               />
             </div>
           </div>
 
-          {/* Errors & Prompts */}
-          {!isPlaying && forcePlaying && status !== 'LOADING' && broadcast?.isPlaying && (
-            <div className="px-4 py-2 bg-red-600/10 border border-red-500/20 rounded-xl animate-bounce">
-              <p className="text-[7px] font-black text-red-500 uppercase tracking-widest flex items-center">
-                <i className="fas fa-satellite-dish mr-2"></i> Tap to join live broadcast
-              </p>
+          {/* Sync Status Badge */}
+          <div className="flex flex-col items-end">
+            <span className="text-[6px] font-black text-green-900/40 uppercase tracking-tighter">Sync Engine V3.5</span>
+            <div className="flex items-center space-x-1 mt-1">
+              <div className="flex space-x-0.5">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className={`w-0.5 h-1.5 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} style={{ animationDelay: `${i * 0.1}s` }}></div>
+                ))}
+              </div>
+              <span className="text-[7px] font-black text-green-700 uppercase">Live Relay</span>
             </div>
-          )}
-
-          {errorMessage && (
-            <div className="bg-red-50 border border-red-100 px-4 py-2 rounded-xl">
-              <p className="text-[7px] font-black text-red-600 text-center uppercase tracking-wide">{errorMessage}</p>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (uiMode === 'headless') return null;
-
-    return (
-      <div className="flex flex-col items-center justify-center space-y-2 w-full">
-        <Logo size="lg" analyser={analyser} isPlaying={isPlaying} />
-
-        <div className="w-full px-8 -mt-10 relative z-20 opacity-0 pointer-events-none">
-          {/* Hidden internal progress bar, replaced by premium display */}
-          <div className="h-1 w-full bg-green-100 rounded-full overflow-hidden">
-            <div className="h-full bg-[#008751] transition-all duration-300" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
 
-        <div className="flex flex-col items-center space-y-3 relative z-20 w-full px-8">
-          {/* 🔥 PREMIUM RADIO DISPLAY */}
-          <div className="w-full bg-green-950/90 backdrop-blur-md rounded-2xl border-2 border-green-500/30 p-4 shadow-2xl relative overflow-hidden group">
-            {/* Signal Pulse Background */}
-            {isPlaying && (
-              <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/10 rounded-full -mr-16 -mt-16 animate-ping pointer-events-none"></div>
-            )}
-
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex flex-col">
-                <div className="flex items-center space-x-2">
-                  <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-red-500 animate-pulse' : 'bg-gray-600'}`}></span>
-                  <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${isPlaying ? 'text-red-400' : 'text-gray-400'}`}>
-                    {isPlaying ? 'ON AIR' : 'OFF AIR'}
-                  </span>
-                </div>
-                <span className="text-[6px] font-bold text-green-300/50 uppercase tracking-widest mt-1">98.5 MHZ | DIASPORA RELAY</span>
-              </div>
-              {status === 'LOADING' && <i className="fas fa-circle-notch fa-spin text-green-400 text-[10px]"></i>}
-            </div>
-
-            <div className="space-y-1">
-              <h4 className="text-[10px] font-black text-white uppercase tracking-wider line-clamp-1 min-h-[1.2rem]">
-                {activeFolder ? `REELING: ${activeFolder}` : (currentTrackName || 'NDR RADIO')}
-              </h4>
-              <div className="flex items-center space-x-2">
-                <span className="text-[7px] font-mono text-green-400/80">{formatTime(currentTime)}</span>
-                <div className="flex-grow h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-400 transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                </div>
-                <span className="text-[7px] font-mono text-green-400/80">{formatTime(duration)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Error Message */}
-          {(errorMessage || radioEngine.getLastError()) && (
-            <button
-              onClick={() => { setErrorMessage(''); handlePlayPause(); }}
-              className="bg-red-500/20 px-4 py-2 rounded-xl border border-red-500/40 w-full animate-bounce hover:bg-red-500/30 transition-all"
-            >
-              <div className="flex flex-col items-center">
-                <p className="text-[8px] font-black text-red-500 uppercase tracking-wide">
-                  {radioEngine.getLastError() || errorMessage}
-                </p>
-                <p className="text-[6px] text-red-400/60 uppercase mt-1">Tap To Join Live / Retry</p>
-              </div>
-            </button>
-          )}
-
-          {/* Controls Grid */}
-          <div className="flex items-center justify-between w-full px-2 relative">
-            {/* JOIN BROADCAST OVERLAY (FOR LISTENERS) */}
-            {forcePlaying && !isPlaying && status !== 'LOADING' && (
-              <div className="absolute inset-x-0 -top-20 flex flex-col items-center space-y-2 z-50 animate-bounce">
-                <span className="text-[7px] font-black text-red-500 bg-white px-3 py-1 rounded-full shadow-sm border border-red-100 uppercase tracking-widest">Signal Detected!</span>
-                <button
-                  onClick={() => { handlePlayPause(); if (!isExpanded) onExpandToggle?.(true); }}
-                  className="bg-red-500 text-white px-6 py-3 rounded-full font-black text-[9px] uppercase tracking-widest shadow-2xl border-2 border-white/20 flex items-center space-x-2 active:scale-95 transition-all"
-                >
-                  <i className="fas fa-satellite-dish"></i>
-                  <span>Tap to Tune In Live</span>
-                </button>
-              </div>
-            )}
-
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handlePlayPause}
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl active:scale-90 transition-all ${isPlaying ? 'bg-red-500 text-white border-4 border-red-400/20' : 'bg-green-600 text-white border-4 border-green-500/20'
-                  }`}
-              >
-                {status === 'LOADING' ? <i className="fas fa-circle-notch fa-spin text-lg"></i> :
-                  isPlaying ? <i className="fas fa-pause text-xl"></i> : <i className="fas fa-play text-xl ml-1"></i>}
-              </button>
-
-              {/* Local Volume for Listeners */}
-              <div className="flex flex-col space-y-1">
-                <div className="flex items-center space-x-2">
-                  <i className="fas fa-volume-up text-green-600 text-[8px]"></i>
-                  <span className="text-[6px] font-black text-green-700 uppercase">{Math.round(volume * 100)}%</span>
-                </div>
-                <input
-                  type="range" min="0" max="1" step="0.01" value={volume}
-                  onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-24 h-1 bg-green-100 rounded-lg appearance-none accent-green-600 cursor-pointer"
-                />
-              </div>
-            </div>
-
-            {/* Sync Status Badge */}
-            <div className="flex flex-col items-end">
-              <span className="text-[6px] font-black text-green-900/40 uppercase tracking-tighter">Sync Engine V3.5</span>
-              <div className="flex items-center space-x-1 mt-1">
-                <div className="flex space-x-0.5">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className={`w-0.5 h-1.5 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} style={{ animationDelay: `${i * 0.1}s` }}></div>
-                  ))}
-                </div>
-                <span className="text-[7px] font-black text-green-700 uppercase">Live Relay</span>
-              </div>
-            </div>
-          </div>
-
-          {status === 'LOADING' && (
-            <button
-              onClick={() => window.location.reload()}
-              className="text-[6px] font-black uppercase text-green-900/50 hover:text-green-950 underline underline-offset-2 animate-pulse"
-            >
-              Connection hanging? Refresh
-            </button>
-          )}
-        </div>
+        {status === 'LOADING' && (
+          <button
+            onClick={() => window.location.reload()}
+            className="text-[6px] font-black uppercase text-green-900/50 hover:text-green-950 underline underline-offset-2 animate-pulse"
+          >
+            Connection hanging? Refresh
+          </button>
+        )}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
-  export default RadioPlayer;
+export default RadioPlayer;
