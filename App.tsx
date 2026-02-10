@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useBroadcast } from './context/BroadcastContext';
 import { useListenerAudio } from './hooks/useListenerAudio';
 import { radioEngine } from './core/RadioEngine';
+import { radioBroadcaster } from './core/RadioBroadcaster';
 import { supabase } from './services/supabaseClient';
 import ListenerView from './components/ListenerView';
 import AdminView from './components/AdminView';
@@ -42,8 +43,9 @@ const App: React.FC = () => {
   const { broadcast, syncStatus } = useBroadcast();
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  // DRIVER: All users (including Admin) hear audio based on global state once they interact
-  useListenerAudio(hasInteracted);
+  // DRIVER: ONLY the Admin hears audio locally (to be captured by WebRTC)
+  // Listeners stay silent until they click 'Tune In' (WebRTC Receiver)
+  useListenerAudio(hasInteracted, role);
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
   const [expandedMedia, setExpandedMedia] = useState<'radio' | 'video' | 'none'>('none');
 
@@ -821,6 +823,9 @@ const App: React.FC = () => {
                     broadcastPulse: Date.now(),
                     lastEvent: { type: 'PLAY', timestamp: Date.now() }
                   });
+
+                  // 🔥 WEBRTC: Start the broadcast pipeline
+                  radioBroadcaster.startBroadcasting();
                   setStatusMsg("");
                 } catch (e) {
                   console.error("Master Sync failed:", e);
@@ -834,6 +839,9 @@ const App: React.FC = () => {
                   broadcastPulse: Date.now(),
                   lastEvent: { type: 'STOP', timestamp: Date.now() }
                 });
+
+                // 🛑 WEBRTC: Stop the broadcast pipeline
+                radioBroadcaster.stopBroadcasting();
               }
             }}
             currentTrackName={broadcast?.activeTrackName || 'NDR RADIO'} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}

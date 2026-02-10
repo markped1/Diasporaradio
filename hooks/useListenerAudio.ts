@@ -8,10 +8,16 @@ import { radioEngine } from '../core/RadioEngine';
  * Accepts listenerHasPressedPlay as an argument.
  * Drives the RadioEngine based on broadcast state and consent.
  */
-export const useListenerAudio = (hasInteracted: boolean) => {
+export const useListenerAudio = (hasInteracted: boolean, role: string) => {
     const { broadcast } = useBroadcast();
 
     useEffect(() => {
+        // RULE: Listeners MUST NOT use this hook to play raw URLs from the DB.
+        // Listeners only use WebRTC via the RadioPlayer component.
+        if (role !== 'ADMIN') {
+            return;
+        }
+
         if (!broadcast) {
             console.log("🎵 [useListenerAudio] Waiting for broadcast state...");
             return;
@@ -20,20 +26,17 @@ export const useListenerAudio = (hasInteracted: boolean) => {
         const isLive = broadcast.isPlaying;
         const streamUrl = broadcast.activeTrackUrl;
 
-        console.log(`🎵 [useListenerAudio] STATE SYNC:
+        console.log(`🎵 [useListenerAudio] ADMIN SYNC (Local Playback):
             - isLive: ${isLive}
             - hasInteracted: ${hasInteracted}
-            - streamUrl: ${streamUrl ? 'PRESENT' : 'MISSING'}
-            - syncStatus: ${broadcast.activeTrackName || 'N/A'}`);
+            - streamUrl: ${streamUrl ? 'PRESENT' : 'MISSING'}`);
 
         if (isLive && hasInteracted && streamUrl) {
-            console.log(`🎵 [useListenerAudio] -> EXECUTE PLAY: ${streamUrl}`);
+            console.log(`🎵 [useListenerAudio] -> ADMIN EXECUTE PLAY: ${streamUrl}`);
             radioEngine.play(streamUrl);
         } else if (!isLive || !streamUrl) {
-            console.log(`🎵 [useListenerAudio] -> EXECUTE STOP (Reason: ${!isLive ? 'Stopped' : 'Missing URL'})`);
+            console.log(`🎵 [useListenerAudio] -> ADMIN EXECUTE STOP`);
             radioEngine.stop();
-        } else if (isLive && !hasInteracted) {
-            console.warn(`🎵 [useListenerAudio] -> BLOCK (Awaiting interaction to comply with browser policy)`);
         }
-    }, [broadcast?.isPlaying, broadcast?.activeTrackUrl, hasInteracted]);
+    }, [broadcast?.isPlaying, broadcast?.activeTrackUrl, hasInteracted, role]);
 };
