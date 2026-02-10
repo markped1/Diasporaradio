@@ -140,11 +140,25 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   const handlePlayPause = async () => {
     if (uiMode === 'listener') {
       onInteract?.();
+
       // Proactive play attempt to satisfy browser policies via direct user gesture
-      if (!isPlaying && broadcast?.activeTrackUrl) {
-        radioEngine.play(broadcast.activeTrackUrl);
-      } else if (isPlaying) {
+      // FIX: Allow interaction even if URL is missing, to register the user gesture
+      if (!isPlaying) {
+        if (broadcast?.activeTrackUrl) {
+          radioEngine.play(broadcast.activeTrackUrl);
+        } else if (broadcast?.isPlaying) {
+          // Admin says we are playing, but we have no URL yet
+          setErrorMessage("Waiting for Signal...");
+          setIsPlaying(true); // Optimistically set playing to show "Connecting" state
+          setStatus('LOADING');
+        } else {
+          // Not playing and no URL - unlikely to happen if button is shown only when isPlaying/forcePlaying
+          setErrorMessage("No Active Broadcast");
+        }
+      } else {
         radioEngine.stop();
+        setIsPlaying(false);
+        setStatus('IDLE');
       }
     } else {
       const nextState = !broadcast?.isPlaying;

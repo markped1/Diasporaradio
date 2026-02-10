@@ -770,6 +770,10 @@ const App: React.FC = () => {
                   targetTrackId = randomTrack.id;
                   targetTrackUrl = randomTrack.url;
                   targetTrackName = cleanTrackName(randomTrack.name);
+                } else if (!targetTrackId && globalPlaylist.length === 0) {
+                  // FAILSAFE: No media content available
+                  alert("⚠️ Cannot Initialize Broadcast: Media Library is Empty.\n\nPlease upload songs or folders first.");
+                  return;
                 }
 
                 // 3. Resolve Broadcast URL & Handshake Cloud
