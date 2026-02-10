@@ -383,13 +383,14 @@ const App: React.FC = () => {
 
     if (playlist.length === 0) return;
 
-    // SMART SHUFFLE: If in shuffle mode and no active folder, restrict to Music Only
-    // This prevents Jingles/News from playing randomly in the music loop
+    // SMART SHUFFLE: If in shuffle mode and no active folder, allow all music
+    // We removed strict filtering because the user requested "Play from ALL folders"
     let playbackPool = playlist;
     if (!activeFolder && isShuffle) {
-      playbackPool = playlist.filter(t => !['Jingles', 'Admin Discussion', 'News', 'TV Adverts'].includes(t.folder || ''));
+      // Optional: We could strictly keep TvAdverts out of audio loop if we wanted, 
+      // but for now we follow the "All Folders" instruction strictly.
+      playbackPool = playlist;
     }
-    if (playbackPool.length === 0) playbackPool = playlist; // Fallback
 
     const currentIndex = playbackPool.findIndex(t => t.id === broadcast?.activeTrackId);
     let nextIndex = isShuffle ? Math.floor(Math.random() * playbackPool.length) : (currentIndex + 1) % playbackPool.length;
@@ -768,24 +769,23 @@ const App: React.FC = () => {
                 setHasInteracted(true);
 
                 // 2. Prepare target track info
+                // 2. Prepare target track info
+                // Use the main playlist directly - User requested "ALL FOLDERS"
                 const globalPlaylist = playlistRef.current;
+
                 let targetTrackId = broadcast?.activeTrackId;
                 let targetTrackUrl = broadcast?.activeTrackUrl;
                 let targetTrackName = broadcast?.activeTrackName || 'Live Stream';
 
-                // SMART SHUFFLE: Filter out Utility Audio (Jingles, News, Adverts)
-                const musicOnlyPlaylist = globalPlaylist.filter(t =>
-                  !['Jingles', 'Admin Discussion', 'News', 'TV Adverts'].includes(t.folder || '')
-                );
-
-                if ((!targetTrackId || targetTrackId === 'default') && musicOnlyPlaylist.length > 0) {
-                  const randomTrack = musicOnlyPlaylist[Math.floor(Math.random() * musicOnlyPlaylist.length)];
+                if ((!targetTrackId || targetTrackId === 'default') && globalPlaylist.length > 0) {
+                  // Pick a random track from the entire available library
+                  const randomTrack = globalPlaylist[Math.floor(Math.random() * globalPlaylist.length)];
                   targetTrackId = randomTrack.id;
                   targetTrackUrl = randomTrack.url;
                   targetTrackName = cleanTrackName(randomTrack.name);
-                } else if (!targetTrackId && musicOnlyPlaylist.length === 0) {
-                  // FAILSAFE: No media content available or only utility content
-                  alert("⚠️ Cannot Initialize Broadcast: No music tracks found in Music folders.");
+                } else if (!targetTrackId && globalPlaylist.length === 0) {
+                  // FAILSAFE: No media content available
+                  alert("⚠️ Cannot Initialize Broadcast: No audio tracks found in Library.\n\nPlease upload songs first.");
                   return;
                 }
 
