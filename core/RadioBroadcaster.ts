@@ -18,25 +18,20 @@ class RadioBroadcaster {
     };
 
     public startBroadcasting() {
-        const audio = radioEngine.getAudioElement();
-        if (!audio) {
-            console.error("❌ [Broadcaster] No audio element found");
+        // 🎙️ RECONSTRUCTION: Capture from the Unified Mixer, NOT just the audio element
+        const stream = radioEngine.getBroadcastStream();
+
+        if (!stream) {
+            console.error("❌ [Broadcaster] No broadcast stream available from Mixer");
             return;
         }
 
-        try {
-            // @ts-ignore - captureStream is not in standard TS defs yet for Audio Elements sometimes
-            const stream = (audio as any).captureStream ? (audio as any).captureStream() : (audio as any).mozCaptureStream();
-            this.localStream = stream;
+        this.localStream = stream;
+        console.log("🎙️ [Broadcaster] Captured Unified Mixer Stream ID:", stream.id);
 
-            console.log("🎙️ [Broadcaster] Captured Local Stream ID:", stream.id);
-            stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
-                console.log(`🎙️ [Broadcaster] Track: ${track.label}, Enabled: ${track.enabled}, Muted: ${track.muted}, State: ${track.readyState}`);
-            });
-
-        } catch (e) {
-            console.error("❌ [Broadcaster] Failed to capture stream:", e);
-        }
+        stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
+            console.log(`🎙️ [Broadcaster] Track: ${track.label}, State: ${track.readyState}`);
+        });
 
         signalingService.initialize('ADMIN', (msg) => this.handleSignal(msg));
     }
