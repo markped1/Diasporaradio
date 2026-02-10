@@ -121,10 +121,12 @@ export async function getDetailedBulletinAudio(params: {
 
     try {
       // Use a consistent male voice for Tommy/Thompson news bulletins
-      let audioData = await generatePuterAudio(fullScript, { provider: 'openai', voice: 'onyx' });
+      // Attempt 1: ElevenLabs (Primary Request)
+      let audioData = await generatePuterAudio(fullScript, { provider: 'elevenlabs', voice: 'gsyHQ9kWCDIipR26RqQ1' });
 
       if (!audioData) {
-        audioData = await generatePuterAudio(fullScript, { provider: 'elevenlabs', voice: 'gsyHQ9kWCDIipR26RqQ1' });
+        console.warn("ElevenLabs Bulletin failed, falling back to OpenAI Onyx...");
+        audioData = await generatePuterAudio(fullScript, { provider: 'openai', voice: 'onyx' });
       }
 
       if (audioData) return audioData;
@@ -165,10 +167,11 @@ export async function getDiscussionAudio(text: string): Promise<Uint8Array | nul
 
 export async function getNewsAudio(newsContent: string): Promise<Uint8Array | null> {
   return withRetry(async () => {
-    // Use Puter instead of Speechify
-    const audioData = await generatePuterAudio(newsContent);
+    // Enforce ElevenLabs for News
+    const audioData = await generatePuterAudio(newsContent, { provider: 'elevenlabs', voice: 'gsyHQ9kWCDIipR26RqQ1' });
     if (audioData) return audioData;
 
+    console.warn("ElevenLabs News generation failed");
     return null;
   });
 }
@@ -184,8 +187,8 @@ export async function getJingleAudio(jingleText: string): Promise<Uint8Array | n
   }
 
   return withRetry(async () => {
-    console.log("Requesting Puter TTS for jingle (Male)...");
-    const audioData = await generatePuterAudio(jingleText, { provider: 'openai', voice: 'onyx' });
+    console.log("Requesting ElevenLabs TTS for jingle (Voice: gsyHQ9kWCDIipR26RqQ1)...");
+    const audioData = await generatePuterAudio(jingleText, { provider: 'elevenlabs', voice: 'gsyHQ9kWCDIipR26RqQ1' });
 
     if (audioData) {
       console.log("Jingle generated successfully, caching...");
