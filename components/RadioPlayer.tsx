@@ -163,6 +163,9 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
           return;
         }
 
+        // 📱 MOBILE UNLOCK: Prime the audio engine immediately on user click
+        radioEngine.resume();
+
         // LISTENER: Start WebRTC Receiver
         import('../core/RadioReceiver').then(m => {
           import('../core/RadioReceiver').then(m => {

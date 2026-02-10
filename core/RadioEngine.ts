@@ -63,6 +63,27 @@ class RadioEngine {
         this.onStatusChange = callback;
     }
 
+    /**
+     * Call this directly from a User Click Event to unlock Mobile Audio
+     */
+    public resume() {
+        if (!this.audio) this.getAudio();
+
+        // Mobile Safari Hack: Play and immediately pause to unlock the element
+        if (this.audio) {
+            this.audio.load();
+            const playPromise = this.audio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    this.audio?.pause();
+                    console.log("MOBILE AUDIO UNLOCKED");
+                }).catch(error => {
+                    console.log("Mobile Autoplay Unlock prevented (expected if no src)", error);
+                });
+            }
+        }
+    }
+
     public play(url: string) {
         if (!url) {
             this.stop();
