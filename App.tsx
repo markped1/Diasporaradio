@@ -954,3 +954,5 @@ const DiagnosticOverlay: React.FC<{
     </div>
   );
 };
+
+export default App;
