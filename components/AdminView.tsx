@@ -504,13 +504,193 @@ const AdminView: React.FC<AdminViewProps> = ({
               <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Bridge the Gap between Studio and Live Diaspora</p>
             </div>
 
+            {/* BROADCAST STATUS DISPLAY */}
+            <div className="bg-white p-4 rounded-2xl border-2 border-amber-100 shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${isRadioPlaying ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                  <span className={`text-[9px] font-black uppercase ${isRadioPlaying ? 'text-red-600' : 'text-gray-500'}`}>
+                    {isRadioPlaying ? 'BROADCASTING LIVE' : 'STANDBY MODE'}
+                  </span>
+                </div>
+                {activeFolder && (
+                  <span className="text-[7px] font-black uppercase text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                    📂 {activeFolder}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* VOICE BROADCAST PANEL */}
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-5 rounded-3xl text-white shadow-lg space-y-3">
+              <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center">
+                <i className="fas fa-microphone mr-2"></i> Voice Broadcast to All
+              </h3>
+              <textarea
+                value={voiceMsg}
+                onChange={(e) => setVoiceMsg(e.target.value)}
+                placeholder="Type your announcement to broadcast to all listeners..."
+                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-[10px] placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 h-20 resize-none"
+              />
+              <button
+                onClick={async () => {
+                  if (!voiceMsg.trim()) return;
+                  setIsProcessing(true);
+                  setStatusMsg("Broadcasting Voice Message...");
+                  await onPushBroadcast?.(voiceMsg);
+                  setVoiceMsg('');
+                  setIsProcessing(false);
+                  setStatusMsg("Voice Broadcast Complete.");
+                  setTimeout(() => setStatusMsg(''), 3000);
+                }}
+                disabled={!voiceMsg.trim()}
+                className={`w-full py-3 rounded-xl text-[8px] font-black uppercase shadow-md transition-all ${voiceMsg.trim()
+                  ? 'bg-white text-blue-700 active:scale-95'
+                  : 'bg-white/20 text-white/40 cursor-not-allowed'
+                  }`}
+              >
+                <i className="fas fa-broadcast-tower mr-2"></i> Broadcast to Global Audience
+              </button>
+            </div>
+
+            {/* NEWS QUICK BROADCAST */}
+            {news.length > 0 && (
+              <div className="bg-white p-4 rounded-2xl border border-green-100 shadow-sm space-y-3">
+                <h3 className="text-[8px] font-black uppercase tracking-widest text-green-600 flex items-center">
+                  <i className="fas fa-newspaper mr-2"></i> Quick News Broadcast
+                </h3>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto no-scrollbar">
+                  {news.slice(0, 5).map(n => (
+                    <div key={n.id} className="bg-green-50/50 p-3 rounded-xl border border-green-100 space-y-2">
+                      <h4 className="text-[9px] font-black text-green-950 line-clamp-1">{n.title}</h4>
+                      <p className="text-[8px] text-green-800 line-clamp-2">{n.content}</p>
+                      <button
+                        onClick={async () => {
+                          setIsProcessing(true);
+                          setStatusMsg(`Broadcasting: ${n.title}`);
+                          await onPushBroadcast?.(`Headline: ${n.title}. ${n.content}`);
+                          setIsProcessing(false);
+                          setStatusMsg("News Broadcast Complete.");
+                          setTimeout(() => setStatusMsg(''), 3000);
+                        }}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-[7px] font-black uppercase flex items-center justify-center shadow-sm active:scale-95 transition-all"
+                      >
+                        <i className="fas fa-volume-up mr-2"></i> Broadcast This
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* DISCUSSION PANEL */}
+            <div className="bg-indigo-600 p-5 rounded-3xl text-white shadow-lg space-y-3">
+              <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center">
+                <i className="fas fa-comments mr-2"></i> Tommy Bossman Discussion
+              </h3>
+              <textarea
+                value={discussionText}
+                onChange={(e) => setDiscussionText(e.target.value)}
+                placeholder="Type a discussion topic for Tommy Bossman to broadcast..."
+                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-[10px] placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 h-20 resize-none"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={async () => {
+                    if (!discussionText.trim()) return;
+                    setIsProcessing(true);
+                    setStatusMsg("Broadcasting Discussion...");
+                    const success = await onDiscussIssue?.(discussionText);
+                    if (success) {
+                      setDiscussionText('');
+                      setStatusMsg("Discussion Broadcast Complete.");
+                    } else {
+                      setStatusMsg("Broadcast Failed. Try again.");
+                    }
+                    setIsProcessing(false);
+                    setTimeout(() => setStatusMsg(''), 5000);
+                  }}
+                  disabled={!discussionText.trim()}
+                  className={`py-3 rounded-xl text-[7px] font-black uppercase shadow-md transition-all ${discussionText.trim()
+                    ? 'bg-white text-indigo-700 active:scale-95'
+                    : 'bg-white/20 text-white/40 cursor-not-allowed'
+                    }`}
+                >
+                  <i className="fas fa-broadcast-tower mr-1"></i> Broadcast Now
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!discussionText.trim() || discussionQueue.length >= 10) return;
+                    setIsProcessing(true);
+                    await dbService.addToDiscussionQueue(discussionText);
+                    setDiscussionText('');
+                    await loadData();
+                    setIsProcessing(false);
+                    setStatusMsg("Added to Queue.");
+                    setTimeout(() => setStatusMsg(''), 2000);
+                  }}
+                  disabled={!discussionText.trim() || discussionQueue.length >= 10}
+                  className={`py-3 rounded-xl text-[7px] font-black uppercase shadow-md transition-all ${discussionText.trim() && discussionQueue.length < 10
+                    ? 'bg-indigo-500 text-white border border-indigo-400 active:scale-95'
+                    : 'bg-white/20 text-white/40 cursor-not-allowed'
+                    }`}
+                >
+                  <i className="fas fa-clock mr-1"></i> Queue ({discussionQueue.length}/10)
+                </button>
+              </div>
+            </div>
+
+            {/* NEWSROOM ACTIVATION */}
+            <div className="bg-purple-600 p-5 rounded-3xl text-white shadow-lg space-y-3">
+              <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center">
+                <i className="fas fa-tv mr-2"></i> AI Newsroom Control
+              </h3>
+              <div className="flex items-center justify-between bg-white/10 p-3 rounded-xl border border-white/20">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${isNewsroomActive ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                  <span className="text-[8px] font-bold uppercase">
+                    {isNewsroomActive ? 'Newsroom ON AIR' : 'Newsroom Standby'}
+                  </span>
+                </div>
+                {isNewsroomActive && (
+                  <button
+                    onClick={async () => {
+                      await onEndNewsroom?.();
+                      setStatusMsg("Newsroom Ended.");
+                      setTimeout(() => setStatusMsg(''), 2000);
+                    }}
+                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-[7px] font-black uppercase active:scale-95 transition-all"
+                  >
+                    End Newsroom
+                  </button>
+                )}
+              </div>
+              {news.length > 0 && !isNewsroomActive && (
+                <button
+                  onClick={async () => {
+                    const topNews = news.slice(0, 3).map(n => `${n.title}. ${n.content}`).join(' ');
+                    setIsProcessing(true);
+                    setStatusMsg("Activating AI Newsroom...");
+                    await onTriggerNewsroom?.(topNews);
+                    setIsProcessing(false);
+                    setStatusMsg("Newsroom Activated.");
+                    setTimeout(() => setStatusMsg(''), 3000);
+                  }}
+                  className="w-full bg-white text-purple-700 py-3 rounded-xl text-[8px] font-black uppercase shadow-md active:scale-95 transition-all"
+                >
+                  <i className="fas fa-users mr-2"></i> Activate Newsroom with Top Stories
+                </button>
+              )}
+            </div>
+
+            {/* FOLDER RELAY CONTROL */}
             <div className="bg-white p-5 rounded-3xl border-2 border-amber-100 shadow-md space-y-4">
               <div className="flex items-center space-x-3 mb-2">
                 <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
                   <i className="fas fa-folder-tree text-amber-600"></i>
                 </div>
                 <div>
-                  <h3 className="text-xs font-black uppercase text-amber-900">Relay Control</h3>
+                  <h3 className="text-xs font-black uppercase text-amber-900">Folder Relay Control</h3>
                   <p className="text-[8px] text-amber-800/60 uppercase font-bold">Select and broadcast specific folders</p>
                 </div>
               </div>
@@ -545,6 +725,7 @@ const AdminView: React.FC<AdminViewProps> = ({
               </div>
             </div>
 
+            {/* INSTANT JINGLES */}
             <div className="bg-white p-4 rounded-2xl border border-amber-100 space-y-3 shadow-sm">
               <h3 className="text-[7px] font-black uppercase tracking-widest text-amber-600 flex items-center">
                 <i className="fas fa-bolt mr-2"></i> Instant Midway Jingles
