@@ -153,17 +153,20 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   }, [broadcast?.isPlaying, isPlaying, uiMode]);
 
   const handlePlayPause = async () => {
+    console.log("🖱️ [RadioPlayer] Button Clicked. uiMode:", uiMode, "isPlaying:", isPlaying, "broadcast.isPlaying:", broadcast?.isPlaying);
     if (uiMode === 'listener') {
       onInteract?.();
 
       if (!isPlaying) {
         // ONLY allow connection if broadcast is explicitly LIVE
         if (!broadcast?.isPlaying) {
+          console.warn("🚫 [RadioPlayer] Connection blocked: Station says Offline in DB.");
           setErrorMessage("Station is Offline");
           return;
         }
 
         // 📱 MOBILE UNLOCK: Prime the audio engine immediately on user click
+        console.log("⚡ [RadioPlayer] Priming Audio Engine for Mobile...");
         radioEngine.resume();
 
         // LISTENER: Start WebRTC Receiver

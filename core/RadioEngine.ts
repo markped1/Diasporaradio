@@ -69,18 +69,25 @@ class RadioEngine {
     public resume() {
         if (!this.audio) this.getAudio();
 
-        // Mobile Safari Hack: Play and immediately pause to unlock the element
-        if (this.audio) {
-            this.audio.load();
-            const playPromise = this.audio.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    this.audio?.pause();
-                    console.log("MOBILE AUDIO UNLOCKED");
-                }).catch(error => {
-                    console.log("Mobile Autoplay Unlock prevented (expected if no src)", error);
-                });
-            }
+        // 📱 ROBUST MOBILE UNLOCK: Play a real (silent) MP3 payload on user click
+        // Playing an actual file is much more reliable than playing an empty element on iOS/Safari
+        try {
+            import('../constants').then(m => {
+                if (this.audio && m.SILENCE_AUDIO_BASE64) {
+                    this.audio.src = m.SILENCE_AUDIO_BASE64;
+                    this.audio.load();
+                    const playPromise = this.audio.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            console.log("🔥 [RadioEngine] MOBILE AUDIO UNLOCKED via SILENCE PLAYBACK");
+                        }).catch(error => {
+                            console.warn("[RadioEngine] Silence Playback prevented:", error);
+                        });
+                    }
+                }
+            });
+        } catch (e) {
+            console.error("[RadioEngine] Unlock failed:", e);
         }
     }
 
