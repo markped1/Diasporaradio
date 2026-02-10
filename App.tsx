@@ -383,9 +383,17 @@ const App: React.FC = () => {
 
     if (playlist.length === 0) return;
 
-    const currentIndex = playlist.findIndex(t => t.id === broadcast?.activeTrackId);
-    let nextIndex = isShuffle ? Math.floor(Math.random() * playlist.length) : (currentIndex + 1) % playlist.length;
-    const track = playlist[nextIndex];
+    // RULE: "Play All" Shuffle must ONLY play Music.
+    // Exclude Utility Audio (Jingles, News, Adverts) from the shuffle pool
+    let playbackPool = playlist;
+    if (!activeFolder && isShuffle) {
+      playbackPool = playlist.filter(t => !['Jingles', 'Admin Discussion', 'News', 'TV Adverts'].includes(t.folder || ''));
+    }
+    if (playbackPool.length === 0) playbackPool = playlist; // Fallback to everything if no music found
+
+    const currentIndex = playbackPool.findIndex(t => t.id === broadcast?.activeTrackId);
+    let nextIndex = isShuffle ? Math.floor(Math.random() * playbackPool.length) : (currentIndex + 1) % playbackPool.length;
+    const track = playbackPool[nextIndex];
     if (track) {
       setHasInteracted(true);
 
@@ -760,21 +768,33 @@ const App: React.FC = () => {
                 setHasInteracted(true);
 
                 // 2. Prepare target track info
-                // 2. Prepare target track info
                 const globalPlaylist = playlistRef.current;
                 let targetTrackId = broadcast?.activeTrackId;
                 let targetTrackUrl = broadcast?.activeTrackUrl;
                 let targetTrackName = broadcast?.activeTrackName || 'Live Stream';
 
-                if ((!targetTrackId || targetTrackId === 'default') && globalPlaylist.length > 0) {
-                  const randomTrack = globalPlaylist[Math.floor(Math.random() * globalPlaylist.length)];
+                // RULE: Start Broadcast with Music Only (No Jingles/News)
+                const musicOnlyPlaylist = globalPlaylist.filter(t =>
+                  !['Jingles', 'Admin Discussion', 'News', 'TV Adverts'].includes(t.folder || '')
+                );
+
+                if ((!targetTrackId || targetTrackId === 'default') && musicOnlyPlaylist.length > 0) {
+                  const randomTrack = musicOnlyPlaylist[Math.floor(Math.random() * musicOnlyPlaylist.length)];
                   targetTrackId = randomTrack.id;
                   targetTrackUrl = randomTrack.url;
                   targetTrackName = cleanTrackName(randomTrack.name);
-                } else if (!targetTrackId && globalPlaylist.length === 0) {
-                  // FAILSAFE: No media content available
-                  alert("⚠️ Cannot Initialize Broadcast: Media Library is Empty.\n\nPlease upload songs or folders first.");
-                  return;
+                } else if (!targetTrackId && musicOnlyPlaylist.length === 0) {
+                  // Fallback: Use anything if no music found
+                  if (globalPlaylist.length > 0) {
+                    const randomTrack = globalPlaylist[Math.floor(Math.random() * globalPlaylist.length)];
+                    targetTrackId = randomTrack.id;
+                    targetTrackUrl = randomTrack.url;
+                    targetTrackName = cleanTrackName(randomTrack.name);
+                  } else {
+                    // FAILSAFE: No media content available
+                    alert("⚠️ Cannot Initialize Broadcast: Media Library is Empty.\n\nPlease upload songs or folders first.");
+                    return;
+                  }
                 }
 
                 // 3. Resolve Broadcast URL & Handshake Cloud
