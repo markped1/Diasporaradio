@@ -50,3 +50,5 @@ export default defineConfig(({ mode }) => {
     }
   };
 });
+// Build timestamp: 2026-02-10 10:50:44
+// This comment forces Vercel to use a fresh build cache
